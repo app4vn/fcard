@@ -225,9 +225,8 @@
             width: 1em;
             height: 1em;
         }
-        /* Styling for the "Add First Card" button on empty state */
+        /* Styling for the "Add First Card" button on empty state (on card front) */
         #empty-state-add-card-btn-on-card {
-            /* Re-use styles from the old #empty-state-add-card-btn or define new ones */
             background-color: #10b981; /* emerald-500 */
             color: white;
             font-weight: 600; /* font-semibold */
@@ -235,11 +234,26 @@
             border-radius: 0.5rem; /* rounded-lg */
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); /* shadow-md */
             transition: all 0.15s ease-in-out;
+            margin-top: 1rem; /* mt-4 */
         }
         #empty-state-add-card-btn-on-card:hover {
             background-color: #059669; /* emerald-600 */
             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); /* shadow-lg */
             transform: translateY(-2px);
+        }
+        .word-display-empty-state { /* Class to style wordDisplay for empty state */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 1rem; /* px-4 */
+        }
+        .word-display-empty-state p {
+            font-size: 1.125rem; /* text-lg */
+            color: #e0f2fe; /* sky-100 or similar light color for contrast on green */
+            margin-bottom: 1rem; /* mb-4 */
         }
 
 
@@ -372,6 +386,7 @@
                 <div id="modal-deck-assignment-container" style="display: none;">
                     <label for="card-deck-assignment-select" class="block text-sm font-medium text-slate-600">Gán vào bộ thẻ:</label>
                     <select id="card-deck-assignment-select" class="mt-1 block w-full p-2 border rounded-md"></select>
+                    <p id="deck-creation-hint" class="text-xs text-slate-500 mt-1 hidden"></p>
                 </div>
                 <div>
                     <label for="card-word-input" class="block text-sm font-medium text-slate-600">Từ/Cụm từ (Tiếng Anh) <span class="text-red-500">*</span></label>
@@ -441,8 +456,8 @@
             const cardSourceSelect = document.getElementById('card-source-select');
             const categorySelect = document.getElementById('category');
             const flashcardElement = document.getElementById('flashcard');
-            const flashcardContainer = document.querySelector('.flashcard-container'); // Ensure this is selected
-            // const emptyStateMessageContainer = document.getElementById('empty-state-container'); // This is removed from HTML
+            const flashcardContainer = document.querySelector('.flashcard-container');
+            // const emptyStateMessageContainer = document.getElementById('empty-state-container'); // Removed
 
             const wordDisplay = document.getElementById('word-display');
             const pronunciationDisplay = document.getElementById('pronunciation-display');
@@ -496,6 +511,8 @@
             const cardTagsInput = document.getElementById('card-tags-input');
             const cancelCardBtn = document.getElementById('cancel-card-btn');
             const saveCardBtn = document.getElementById('save-card-btn');
+            const deckCreationHint = document.getElementById('deck-creation-hint'); // Added for the hint
+
 
             const userDeckFilterContainer = document.getElementById('user-deck-filter-container');
             const userDeckSelect = document.getElementById('user-deck-select');
@@ -949,10 +966,25 @@
 
                 if (cardSourceSelect.value === 'user') {
                     modalDeckAssignmentContainer.style.display = 'block';
-                    if (mode === 'edit' && cardData && cardData.deckId) cardDeckAssignmentSelect.value = cardData.deckId;
-                    else if (mode === 'add' && userDeckSelect.value && userDeckSelect.value !== 'all_user_cards' && userDeckSelect.value !== 'unassigned_cards') cardDeckAssignmentSelect.value = userDeckSelect.value;
-                    else cardDeckAssignmentSelect.value = '';
-                } else modalDeckAssignmentContainer.style.display = 'none';
+                    if (mode === 'edit' && cardData && cardData.deckId) {
+                        cardDeckAssignmentSelect.value = cardData.deckId;
+                        deckCreationHint.classList.add('hidden'); 
+                    } else if (mode === 'add' && userDeckSelect.value && userDeckSelect.value !== 'all_user_cards' && userDeckSelect.value !== 'unassigned_cards') {
+                        cardDeckAssignmentSelect.value = userDeckSelect.value;
+                        deckCreationHint.classList.add('hidden'); 
+                    } else {
+                        cardDeckAssignmentSelect.value = ''; 
+                        if (userDecks.length === 0 && mode === 'add') { 
+                            deckCreationHint.innerHTML = "Mẹo: Tạo bộ thẻ mới từ menu <i class='fas fa-bars'></i> (góc trên) > Quản lý Bộ thẻ.";
+                            deckCreationHint.classList.remove('hidden');
+                        } else {
+                            deckCreationHint.classList.add('hidden');
+                        }
+                    }
+                } else {
+                    modalDeckAssignmentContainer.style.display = 'none';
+                    deckCreationHint.classList.add('hidden'); 
+                }
 
                 if (mode === 'edit' && cardData) {
                     currentEditingCardId = cardData.id;
@@ -1239,15 +1271,14 @@
             // HÀM updateFlashcard ĐÃ ĐƯỢC CẬP NHẬT VỚI CÁC TÍNH NĂNG MỚI
             // ========================================================================
             function updateFlashcard() {
-                console.log("[updateFlashcard] Called. Current practiceType:", practiceType);
+                // console.log("[updateFlashcard] Called. Current practiceType:", practiceType);
                 clearLearningTimer(); currentAnswerChecked = false;
                 feedbackMessage.textContent = ''; feedbackMessage.className = 'mt-3 p-3 hidden';
                 multipleChoiceOptionsContainer.innerHTML = '';
                 typingInputContainer.style.display = 'none'; typingInput.value = ''; typingInput.disabled = false; submitTypingAnswerBtn.disabled = false;
                 
-                // Reset card elements for normal display or empty state
                 wordDisplay.innerHTML = '';
-                wordDisplay.classList.remove('text-center', 'flex', 'flex-col', 'items-center', 'justify-center', 'h-full', 'px-4'); // Remove empty state specific styles
+                wordDisplay.className = 'text-3xl sm:text-4xl font-bold break-words'; // Reset to default classes
                 pronunciationDisplay.textContent = '';
                 tagsDisplayFront.textContent = '';
                 meaningDisplayContainer.innerHTML = '';
@@ -1268,7 +1299,7 @@
                             const cI = currentData[currentIndex]; 
                             currentCorrectAnswerForPractice = (cI.category === 'phrasalVerbs' ? cI.phrasalVerb : cI.word) || ''; 
                         } else {
-                             typingInputContainer.innerHTML = '<p>Không có thẻ.</p>'; // Should not happen if item check is correct
+                             typingInputContainer.innerHTML = '<p>Không có thẻ.</p>'; 
                         }
                     } else {
                         typingInputContainer.style.display = 'none'; multipleChoiceOptionsContainer.style.display = 'grid';
@@ -1296,16 +1327,16 @@
 
 
                 const item = currentData.length > 0 ? currentData[currentIndex] : null;
-                console.log("[updateFlashcard] Item to display:", item);
-
+                // console.log("[updateFlashcard] Item to display:", item);
+                
                 if (!item) { 
-                    console.log("[updateFlashcard] No item. Preparing empty state on card front.");
-                    wordDisplay.classList.add('text-center', 'flex', 'flex-col', 'items-center', 'justify-center', 'h-full', 'px-4');
+                    // console.log("[updateFlashcard] No item. Preparing empty state on card front.");
+                    wordDisplay.classList.add('word-display-empty-state'); // Add specific class for empty state styling
                     
                     if (currentDatasetSource === 'user' && loadUserCards().length === 0) {
                         wordDisplay.innerHTML = `
-                            <p class="text-xl text-slate-200 mb-6">Bạn chưa có thẻ nào trong bộ sưu tập "Thẻ của Tôi".</p>
-                            <button id="empty-state-add-card-btn-on-card" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out text-lg transform hover:scale-105">
+                            <p>Bạn chưa có thẻ nào trong bộ sưu tập "Thẻ của Tôi".</p>
+                            <button id="empty-state-add-card-btn-on-card">
                                 <i class="fas fa-plus mr-2"></i>Tạo Thẻ Đầu Tiên
                             </button>
                         `;
@@ -1320,14 +1351,14 @@
                     pronunciationDisplay.style.display = 'none';
                     tagsDisplayFront.style.display = 'none';
                     speakerBtn.style.display = 'none';
-                    speakerExampleBtn.style.display = 'none';
+                    speakerExampleBtn.style.display = 'none'; // Also hide example speaker
                     flipBtn.disabled = true; 
                     updateStatusButtonsUI(null, null); 
 
                 } else { 
                     // wordDisplay classes are reset at the start of the function
                     pronunciationDisplay.style.display = 'block';
-                    // tagsDisplayFront display is handled by its own logic later
+                    tagsDisplayFront.style.display = 'block'; // Will be controlled by its own logic later
                     speakerBtn.style.display = 'block';
                     speakerExampleBtn.style.display = 'block';
                     flipBtn.disabled = (practiceType !== "off");
@@ -1361,9 +1392,6 @@
                             if (pI < pts.length - 1) { const nPID = pts[pI + 1].startsWith('(') && pts[pI + 1].endsWith(')'); if (!p.endsWith(' ') && !pts[pI + 1].startsWith(' ') && !(iD && nPID)) { wordDisplay.appendChild(document.createTextNode(' ')); bTFM += ' '; } }
                         });
                         textForTTS = bTFM;
-                        pronunciationDisplay.style.display = 'block';
-                        tagsDisplayFront.style.display = 'block';
-                        speakerBtn.style.display = 'block';
                     }
                     wordDisplay.dataset.ttsText = textForTTS;
                     pronunciationDisplay.textContent = item.pronunciation || '';
@@ -1514,7 +1542,7 @@
                         !e.target.closest('#delete-card-on-back-btn') &&
                         !e.target.closest('.toggle-examples-btn') &&
                         !e.target.closest('.copy-example-btn') &&
-                        !e.target.closest('#empty-state-add-card-btn-on-card') // Ignore click on this button
+                        !e.target.closest('#empty-state-add-card-btn-on-card') 
                         ) {
                         flashcardElement.classList.toggle('flipped');
                     }
