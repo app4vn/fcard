@@ -246,8 +246,7 @@
             <button id="hamburger-menu-btn" title="Mở bộ lọc" class="text-2xl p-2 hover:bg-slate-700 rounded-md">
                 <i class="fas fa-bars"></i>
             </button>
-            <h1 id="main-header-title" class="text-xl sm:text-2xl font-semibold text-center flex-grow">Flashcard</h1>
-            <div class="w-10 h-10"></div>
+            <h1 id="main-header-title" class="text-xl sm:text-2xl font-semibold text-center flex-grow">Flashcard</h1> <div class="w-10 h-10"></div>
         </div>
     </header>
 
@@ -751,7 +750,7 @@
                             <i class="fas fa-plus mr-1"></i>Thêm Ví dụ
                         </button>
                     </div>
-                    `; // Nút "Thêm Khối Nghĩa Mới (bên dưới khối này)" đã được XÓA
+                    `; 
 
                 const examplesContainerDiv = meaningBlockDiv.querySelector('.examples-for-meaning-container');
                 if (meaningBlockData.examples && meaningBlockData.examples.length > 0) {
@@ -889,7 +888,21 @@
             function openSidebar(){filterSidebar.classList.remove('-translate-x-full');filterSidebar.classList.add('translate-x-0');sidebarOverlay.classList.remove('hidden');updateSidebarFilterVisibility();}
             function closeSidebar(){filterSidebar.classList.add('-translate-x-full');filterSidebar.classList.remove('translate-x-0');sidebarOverlay.classList.add('hidden');}
             function updateSidebarFilterVisibility(){const cat=categorySelect.value;const isPV=cat==='phrasalVerbs';baseVerbFilterContainer.style.display=isPV?'block':'none';tagFilterContainer.style.display=isPV?'block':'none';const isU=cardSourceSelect.value==='user';userDeckFilterContainer.style.display=isU?'block':'none';manageDecksBtn.style.display=isU?'block':'none';}
-            function updateMainHeaderTitle(){const sT=currentDatasetSource==='web'?"Thẻ của Web":"Thẻ của Tôi";let dT="";if(currentDatasetSource==='user'&&userDeckSelect.value&&userDeckSelect.value!=='all_user_cards'&&userDeckSelect.value!=='unassigned_cards'){const sD=userDecks.find(d=>d.id===userDeckSelect.value);if(sD)dT=` - ${sD.name}`; }else if(currentDatasetSource==='user'&&userDeckSelect.value==='unassigned_cards'){dT=" - Thẻ chưa có bộ";}mainHeaderTitle.textContent=`Flashcard - ${sT}${dT}`;}
+            
+            function updateMainHeaderTitle() {
+                const sourceText = currentDatasetSource === 'web' ? "Thẻ của Web" : "Thẻ của Tôi";
+                let deckText = "";
+                if (currentDatasetSource === 'user' && userDeckSelect.value && userDeckSelect.value !== 'all_user_cards' && userDeckSelect.value !== 'unassigned_cards') {
+                    const selectedDeck = userDecks.find(d => d.id === userDeckSelect.value);
+                    if (selectedDeck) deckText = ` - ${selectedDeck.name}`;
+                } else if (currentDatasetSource === 'user' && userDeckSelect.value === 'unassigned_cards') {
+                    deckText = " - Thẻ chưa có bộ";
+                }
+                
+                const categoryText = categorySelect.options[categorySelect.selectedIndex].text;
+                mainHeaderTitle.textContent = `Flashcard - ${sourceText}${deckText} - ${categoryText}`;
+            }
+
 
             function openAddEditModal(mode = 'add', cardData = null) {
                 clearAllFormErrors();
@@ -1576,7 +1589,7 @@
 
                 if (sourceFromUrl === 'user' || sourceFromUrl === 'web') {
                     currentDatasetSource = sourceFromUrl;
-                    appState.lastSelectedSource = sourceFromUrl; // Cập nhật appState
+                    appState.lastSelectedSource = sourceFromUrl; 
                 } else {
                     currentDatasetSource = appState.lastSelectedSource || 'web';
                 }
@@ -1590,7 +1603,7 @@
                 }
 
                 updateSidebarFilterVisibility();
-                updateMainHeaderTitle(); // Gọi ở đây để đảm bảo tiêu đề đúng ngay từ đầu
+                updateMainHeaderTitle(); 
                 loadVocabularyData(categorySelect.value);
             }
         });
