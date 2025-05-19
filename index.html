@@ -55,7 +55,7 @@
         #filter-sidebar {
             transition: transform 0.3s ease-in-out;
         }
-        #speaker-btn, #speaker-example-btn, .card-action-btn-on-back {
+        #speaker-btn, #speaker-example-btn, .card-action-btn-on-back, .copy-example-btn { /* Added .copy-example-btn */
             z-index: 10;
         }
         #typing-input::placeholder {
@@ -112,6 +112,9 @@
         .example-eng-on-card {
             font-size: 1rem; /* text-base */
             color: #f0f9ff; /* sky-50 */
+            display: flex; /* For aligning text and copy button */
+            justify-content: space-between; /* For aligning text and copy button */
+            align-items: center; /* For aligning text and copy button */
         }
         .example-vie-on-card {
             font-size: 0.875rem; /* text-sm */
@@ -136,19 +139,35 @@
             color: #bae6fd;
             margin-right: 0.25rem;
         }
-        .toggle-examples-btn { /* Styling for the "Show More/Less" button */
-            font-size: 0.75rem; /* text-xs */
-            color: #bae6fd; /* sky-200 */
+        .toggle-examples-btn {
+            font-size: 0.75rem;
+            color: #bae6fd;
             text-decoration: underline;
-            margin-top: 0.25rem; /* mt-1 */
-            margin-left: 0.75rem; /* ml-3 to align with examples if they have ml-3 */
+            margin-top: 0.25rem;
+            margin-left: 0.75rem;
             background: none;
             border: none;
             padding: 0;
             cursor: pointer;
         }
         .toggle-examples-btn:hover {
+            color: #e0f2fe;
+        }
+        .copy-example-btn {
+            background: none;
+            border: none;
+            padding: 0.25rem; /* p-1 */
+            margin-left: 0.5rem; /* ml-2 */
+            cursor: pointer;
+            color: #bae6fd; /* sky-200 */
+            transition: color 0.15s ease-in-out;
+        }
+        .copy-example-btn:hover {
             color: #e0f2fe; /* sky-100 */
+        }
+        .copy-example-btn svg { /* Ensure SVGs inside button are sized */
+            width: 16px;
+            height: 16px;
         }
 
 
@@ -857,7 +876,7 @@
             function checkTypingAnswer(){if(currentData.length===0||!currentCorrectAnswerForPractice)return;currentAnswerChecked=true;feedbackMessage.classList.remove('hidden');typingInput.disabled=true;submitTypingAnswerBtn.disabled=true;const uA=typingInput.value.trim().toLowerCase();const cA=currentCorrectAnswerForPractice.trim().toLowerCase();const iC=uA===cA;if(iC){feedbackMessage.textContent='Đúng!';feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300';}else{feedbackMessage.textContent=`Sai! Đúng: ${currentCorrectAnswerForPractice}`;feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300';}flashcardElement.classList.remove('practice-mode-front-only');flashcardElement.classList.add('flipped');const i=currentData[currentIndex];const iCV=i.category;const id=getCardIdentifier(i,iCV);if(id)setCardStatus(iC?'learned':'learning');updateCardInfo();}
 
             // ========================================================================
-            // HÀM updateFlashcard ĐÃ ĐƯỢC CẬP NHẬT VỚI SVG ICONS VÀ CHỨC NĂNG THU GỌN/MỞ RỘNG VÍ DỤ
+            // HÀM updateFlashcard ĐÃ ĐƯỢC CẬP NHẬT VỚI CÁC TÍNH NĂNG MỚI
             // ========================================================================
             function updateFlashcard() {
                 clearLearningTimer(); currentAnswerChecked = false;
@@ -982,11 +1001,12 @@
                             }
 
                             if (mObj.examples && mObj.examples.length > 0) {
-                                const examplesContainer = document.createElement('div'); // Wrapper for examples and toggle button
-                                examplesContainer.className = "ml-3 mt-3"; // Indent and add top margin
+                                const examplesContainer = document.createElement('div');
+                                examplesContainer.className = "ml-3 mt-3";
 
                                 const examplesListDiv = document.createElement('div');
-                                examplesListDiv.className = "space-y-1.5"; // Spacing between example items
+                                examplesListDiv.className = "space-y-1.5";
+                                examplesListDiv.dataset.meaningId = mObj.id; // Add a unique identifier for this list
 
                                 const maxVisibleExamples = 1;
                                 const totalExamples = mObj.examples.length;
@@ -1000,12 +1020,42 @@
 
                                     const eP = document.createElement('p');
                                     eP.className="example-eng-on-card";
+                                    
+                                    const textSpan = document.createElement('span'); // Span for text content
                                     const enLabel = document.createElement('span');
                                     enLabel.className = 'example-label';
                                     enLabel.textContent = 'EN: ';
-                                    eP.appendChild(enLabel);
-                                    eP.appendChild(document.createTextNode(ex.eng));
+                                    textSpan.appendChild(enLabel);
+                                    textSpan.appendChild(document.createTextNode(ex.eng));
+                                    eP.appendChild(textSpan);
+
+                                    const copyBtn = document.createElement('button');
+                                    copyBtn.className = 'copy-example-btn';
+                                    copyBtn.title = 'Sao chép ví dụ';
+                                    const initialCopySvg = `
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+                                        </svg>`;
+                                    const copiedSvg = `
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                        </svg>`;
+                                    copyBtn.innerHTML = initialCopySvg;
+                                    copyBtn.onclick = (e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(ex.eng).then(() => {
+                                            copyBtn.innerHTML = copiedSvg;
+                                            setTimeout(() => {
+                                                copyBtn.innerHTML = initialCopySvg;
+                                            }, 1500);
+                                        }).catch(err => {
+                                            console.error('Không thể sao chép: ', err);
+                                            // Optionally, provide error feedback to the user
+                                        });
+                                    };
+                                    eP.appendChild(copyBtn);
                                     exD.appendChild(eP);
+
 
                                     if(ex.vie){
                                         const vP = document.createElement('p');
@@ -1025,11 +1075,11 @@
                                     }
                                     examplesListDiv.appendChild(exD);
                                 });
-                                examplesContainer.appendChild(examplesListDiv); // Add list of examples
+                                examplesContainer.appendChild(examplesListDiv);
 
                                 if (totalExamples > maxVisibleExamples) {
                                     const toggleExamplesBtn = document.createElement('button');
-                                    toggleExamplesBtn.className = "toggle-examples-btn"; // Use the new CSS class
+                                    toggleExamplesBtn.className = "toggle-examples-btn";
                                     let hiddenCount = totalExamples - maxVisibleExamples;
                                     toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`;
                                     toggleExamplesBtn.dataset.expanded = "false";
@@ -1053,9 +1103,9 @@
                                             toggleExamplesBtn.dataset.expanded = "true";
                                         }
                                     };
-                                    examplesContainer.appendChild(toggleExamplesBtn); // Append button to the examples container
+                                    examplesContainer.appendChild(toggleExamplesBtn);
                                 }
-                                meaningBlockDiv.appendChild(examplesContainer); // Append the whole container to meaning block
+                                meaningBlockDiv.appendChild(examplesContainer);
                             }
                             meaningDisplayContainer.appendChild(meaningBlockDiv);
                         });
@@ -1108,7 +1158,8 @@
                         !e.target.closest('button#speaker-example-btn') &&
                         !e.target.closest('#edit-card-on-back-btn') &&
                         !e.target.closest('#delete-card-on-back-btn') &&
-                        !e.target.closest('.toggle-examples-btn') // Ignore clicks on toggle button
+                        !e.target.closest('.toggle-examples-btn') &&
+                        !e.target.closest('.copy-example-btn') // Ignore clicks on copy button
                         ) {
                         flashcardElement.classList.toggle('flipped');
                     }
