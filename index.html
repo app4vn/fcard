@@ -55,7 +55,7 @@
         #filter-sidebar {
             transition: transform 0.3s ease-in-out;
         }
-        #speaker-btn, #speaker-example-btn, .card-action-btn-on-back { /* Updated for on-card action buttons */
+        #speaker-btn, #speaker-example-btn, .card-action-btn-on-back {
             z-index: 10;
         }
         #typing-input::placeholder {
@@ -228,7 +228,7 @@
                     <button id="speaker-btn" title="Phát âm Từ" class="absolute bottom-4 left-4 text-2xl p-2 hover:text-green-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20"><i class="fas fa-volume-up"></i></button>
                 </div>
                 <div class="card-back absolute w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-xl p-5 flex flex-col overflow-hidden">
-                    <div class="card-scrollable-content w-full h-full overflow-y-auto text-left p-3 pb-16 space-y-2 pt-12"> <div id="meaning-display-container" class="space-y-4"></div>
+                    <div class="card-scrollable-content w-full h-full overflow-y-auto text-left p-3 pb-16 space-y-2 pt-10"> <div id="meaning-display-container" class="space-y-4"></div>
                         <div id="notes-section" class="notes-section border-t border-blue-400 pt-3 mt-4">
                             <p id="notes-display" class="text-sm text-indigo-100"></p>
                         </div>
@@ -367,7 +367,6 @@
             const cardTagsInput = document.getElementById('card-tags-input');
             const cancelCardBtn = document.getElementById('cancel-card-btn');
             const saveCardBtn = document.getElementById('save-card-btn');
-            // Các biến editCardBtn và deleteCardBtn (cho nút dưới thẻ) đã bị XÓA
 
             const userDeckFilterContainer = document.getElementById('user-deck-filter-container');
             const userDeckSelect = document.getElementById('user-deck-select');
@@ -649,7 +648,7 @@
             function getStatusKeyForStorage(id,cat,isU){return id;}
             function getCardStatus(id,cat,isU){const sK=getStatusKeyForStorage(id,cat,isU);const dS={status:'new',lastReviewed:null,reviewCount:0};if(!sK||!cardStatuses[sK])return dS;const s=cardStatuses[sK];return{status:s.status||'new',lastReviewed:s.lastReviewed||null,reviewCount:s.reviewCount||0};}
             function setCardStatus(newVal){if(currentData.length===0)return;const i=currentData[currentIndex];const cV=i.category;const id=getCardIdentifier(i,cV);if(!id)return;const sK=getStatusKeyForStorage(id,cV,i.isUserCard);const n=Date.now();let cR=(cardStatuses[sK]&&typeof cardStatuses[sK].reviewCount==='number')?cardStatuses[sK].reviewCount:0;cardStatuses[sK]={status:newVal,lastReviewed:n,reviewCount:newVal!=='new'?cR+1:0};saveCardStatuses();updateStatusButtonsUI(id,cV);startLearningTimer();if(newVal==='learned'&&getCategoryState(currentDatasetSource,categorySelect.value).filterMarked==='all_study')applyAllFilters();}
-            function updateStatusButtonsUI(id,cat){const sBs=[{btn:statusBtnNew,status:'new'},{btn:statusBtnLearning,status:'learning'},{btn:statusBtnLearned,status:'learned'}];const i=currentData.length>0?currentData[currentIndex]:null;if(!i||!id){sBs.forEach(o=>{if(o.btn){o.btn.classList.remove('bg-indigo-600','text-white','border-indigo-700');o.btn.classList.add('bg-white','text-slate-700','border-slate-300');o.btn.disabled=true;}}); /* userCardActions.style.display='none'; // Đã xóa userCardActions */ return;}sBs.forEach(o=>{if(o.btn)o.btn.disabled=false;});const cSO=getCardStatus(id,cat,i.isUserCard);const cSV=cSO.status;sBs.forEach(o=>{if(o.btn){o.btn.classList.toggle('bg-indigo-600',o.status===cSV);o.btn.classList.toggle('text-white',o.status===cSV);o.btn.classList.toggle('border-indigo-700',o.status===cSV);o.btn.classList.toggle('bg-white',o.status!==cSV);o.btn.classList.toggle('text-slate-700',o.status!==cSV);o.btn.classList.toggle('border-slate-300',o.status!==cSV);}});if(statusBtnNew)statusBtnNew.disabled=(currentDatasetSource==='web'&&cSV==='learning'&&!i.isUserCard); /* userCardActions.style.display=i.isUserCard?'flex':'none'; // Đã xóa userCardActions */}
+            function updateStatusButtonsUI(id,cat){const sBs=[{btn:statusBtnNew,status:'new'},{btn:statusBtnLearning,status:'learning'},{btn:statusBtnLearned,status:'learned'}];const i=currentData.length>0?currentData[currentIndex]:null;if(!i||!id){sBs.forEach(o=>{if(o.btn){o.btn.classList.remove('bg-indigo-600','text-white','border-indigo-700');o.btn.classList.add('bg-white','text-slate-700','border-slate-300');o.btn.disabled=true;}}); return;}sBs.forEach(o=>{if(o.btn)o.btn.disabled=false;});const cSO=getCardStatus(id,cat,i.isUserCard);const cSV=cSO.status;sBs.forEach(o=>{if(o.btn){o.btn.classList.toggle('bg-indigo-600',o.status===cSV);o.btn.classList.toggle('text-white',o.status===cSV);o.btn.classList.toggle('border-indigo-700',o.status===cSV);o.btn.classList.toggle('bg-white',o.status!==cSV);o.btn.classList.toggle('text-slate-700',o.status!==cSV);o.btn.classList.toggle('border-slate-300',o.status!==cSV);}});if(statusBtnNew)statusBtnNew.disabled=(currentDatasetSource==='web'&&cSV==='learning'&&!i.isUserCard);}
             function loadUserCards(){try{const s=localStorage.getItem(userCardsStorageKey);return s?JSON.parse(s):[];}catch(e){return[];}}
             function saveUserCards(arr){try{localStorage.setItem(userCardsStorageKey,JSON.stringify(arr));}catch(e){}}
 
@@ -738,10 +737,9 @@
                 const cTD=currentData[currentIndex];
                 if(!confirm(`Xóa thẻ "${getCardIdentifier(cTD,cTD.category)}"?`))return;
                 let aUCA=loadUserCards();
-                const idTD=getCardIdentifier(cTD,cTD.category); // Should be cTD.id for user cards
                 aUCA=aUCA.filter(c=>c.id!==cTD.id);
                 saveUserCards(aUCA);
-                const sKTD=getStatusKeyForStorage(cTD.id,cTD.category,true); // Use cTD.id
+                const sKTD=getStatusKeyForStorage(cTD.id,cTD.category,true);
                 if(cardStatuses[sKTD]){delete cardStatuses[sKTD];saveCardStatuses();}
                 let nI=currentIndex;
                 if(currentIndex>=currentData.length-1&&currentIndex>0)nI=currentIndex-1;
@@ -840,9 +838,7 @@
             function checkTypingAnswer(){if(currentData.length===0||!currentCorrectAnswerForPractice)return;currentAnswerChecked=true;feedbackMessage.classList.remove('hidden');typingInput.disabled=true;submitTypingAnswerBtn.disabled=true;const uA=typingInput.value.trim().toLowerCase();const cA=currentCorrectAnswerForPractice.trim().toLowerCase();const iC=uA===cA;if(iC){feedbackMessage.textContent='Đúng!';feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300';}else{feedbackMessage.textContent=`Sai! Đúng: ${currentCorrectAnswerForPractice}`;feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300';}flashcardElement.classList.remove('practice-mode-front-only');flashcardElement.classList.add('flipped');const i=currentData[currentIndex];const iCV=i.category;const id=getCardIdentifier(i,iCV);if(id)setCardStatus(iC?'learned':'learning');updateCardInfo();}
 
             // ========================================================================
-            // HÀM updateFlashcard ĐÃ ĐƯỢC CẬP NHẬT
-            // 1. Đường phân cách nghĩa đậm hơn.
-            // 2. Thêm nút "Sửa thẻ" và "Xóa thẻ" ở mặt sau cho thẻ người dùng.
+            // HÀM updateFlashcard ĐÃ ĐƯỢC CẬP NHẬT VỚI SVG ICONS
             // ========================================================================
             function updateFlashcard() {
                 clearLearningTimer(); currentAnswerChecked = false;
@@ -853,12 +849,10 @@
                 speakerBtn.style.display = 'block'; speakerExampleBtn.style.display = 'block';
                 flipBtn.style.display = 'inline-flex'; flashcardElement.classList.remove('practice-mode-word-quiz');
 
-                // Xóa các nút sửa/xoá cũ trên thẻ (nếu có) trước khi tạo mới
                 const oldEditBtnOnCard = document.getElementById('edit-card-on-back-btn');
                 if (oldEditBtnOnCard) oldEditBtnOnCard.remove();
                 const oldDeleteBtnOnCard = document.getElementById('delete-card-on-back-btn');
                 if (oldDeleteBtnOnCard) oldDeleteBtnOnCard.remove();
-
 
                 if (practiceType !== "off") {
                     flipBtn.style.display = 'none'; practiceArea.style.display = 'block';
@@ -918,32 +912,31 @@
                         tagsDisplayFront.textContent = dT.join(' | '); tagsDisplayFront.style.display = dT.length > 0 ? 'block' : 'none';
                     } else { tagsDisplayFront.textContent = ''; tagsDisplayFront.style.display = 'none'; }
 
-                    // THÊM NÚT SỬA VÀ XOÁ THẺ Ở MẶT SAU (NẾU LÀ THẺ NGƯỜI DÙNG)
                     if (item.isUserCard) {
                         const cardBackElement = flashcardElement.querySelector('.card-back');
 
-                        // Nút Sửa
                         const editOnBackBtn = document.createElement('button');
                         editOnBackBtn.id = 'edit-card-on-back-btn';
                         editOnBackBtn.title = 'Sửa thẻ này';
-                        editOnBackBtn.className = 'card-action-btn-on-back absolute top-3 right-3 text-lg p-2 text-white hover:text-indigo-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-25';
-                        editOnBackBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-                        editOnBackBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            openAddEditModal('edit', item);
-                        };
+                        editOnBackBtn.className = 'card-action-btn-on-back absolute top-1.5 right-1.5 p-1.5 text-white hover:text-indigo-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20';
+                        editOnBackBtn.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" style="width: 20px; height: 20px;">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                            </svg>
+                        `;
+                        editOnBackBtn.onclick = (e) => { e.stopPropagation(); openAddEditModal('edit', item); };
                         cardBackElement.appendChild(editOnBackBtn);
 
-                        // Nút Xoá
                         const deleteOnBackBtn = document.createElement('button');
                         deleteOnBackBtn.id = 'delete-card-on-back-btn';
                         deleteOnBackBtn.title = 'Xóa thẻ này';
-                        deleteOnBackBtn.className = 'card-action-btn-on-back absolute top-3 left-3 text-lg p-2 text-white hover:text-red-300 transition-colors rounded-full hover:bg-black hover:bg-opacity-25';
-                        deleteOnBackBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
-                        deleteOnBackBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            handleDeleteCard(); // Gọi hàm xóa thẻ hiện tại
-                        };
+                        deleteOnBackBtn.className = 'card-action-btn-on-back absolute top-1.5 left-1.5 p-1.5 text-white hover:text-red-300 transition-colors rounded-full hover:bg-black hover:bg-opacity-20';
+                        deleteOnBackBtn.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" style="width: 20px; height: 20px;">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.502 0c-.34.055-.68.11-.1.023.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                            </svg>
+                        `;
+                        deleteOnBackBtn.onclick = (e) => { e.stopPropagation(); handleDeleteCard(); };
                         cardBackElement.appendChild(deleteOnBackBtn);
                     }
 
@@ -1045,7 +1038,6 @@
                 openAddCardModalBtn.addEventListener('click', ()=>openAddEditModal('add'));
                 closeModalBtn.addEventListener('click', closeAddEditModal); cancelCardBtn.addEventListener('click', closeAddEditModal);
                 addEditCardForm.addEventListener('submit', (e)=>{e.preventDefault();handleSaveCard();});
-                // Các trình xử lý cho editCardBtn và deleteCardBtn cũ đã được XÓA
 
                 practiceTypeSelect.addEventListener('change', (e)=>{clearLearningTimer();practiceType=e.target.value;const cat=categorySelect.value;const st=getCategoryState(currentDatasetSource,cat);searchInput.value='';if(cat==='phrasalVerbs'){st.tag='all';tagSelect.value='all';st.baseVerb='all';baseVerbSelect.value='all';}if(currentDatasetSource==='user'){st.deckId='all_user_cards';userDeckSelect.value='all_user_cards';}st.filterMarked='all_study';filterCardStatusSelect.value='all_study';st.currentIndex=0;applyAllFilters();closeSidebar();});
                 categorySelect.addEventListener('change', (e)=>{clearLearningTimer();const selCat=e.target.value;practiceTypeSelect.value="off";practiceType="off";searchInput.value='';loadVocabularyData(selCat);});
@@ -1056,8 +1048,8 @@
                     if (practiceType === "off" && e.target.closest('.flashcard') === flashcardElement &&
                         !e.target.closest('button#speaker-btn') &&
                         !e.target.closest('button#speaker-example-btn') &&
-                        !e.target.closest('#edit-card-on-back-btn') && // Bỏ qua nút sửa mới
-                        !e.target.closest('#delete-card-on-back-btn') // Bỏ qua nút xoá mới
+                        !e.target.closest('#edit-card-on-back-btn') &&
+                        !e.target.closest('#delete-card-on-back-btn')
                         ) {
                         flashcardElement.classList.toggle('flipped');
                     }
