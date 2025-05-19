@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcard Tiếng Anh - Chọn Nguồn Thẻ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+        }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-6">
+
+    <div class="bg-white shadow-2xl rounded-xl p-8 md:p-12 max-w-lg w-full text-center">
+        <header class="mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800">
+                Flashcard Tiếng Anh
+            </h1>
+            <p class="text-slate-600 mt-3 text-lg">
+                Nâng cao vốn từ vựng của bạn mỗi ngày!
+            </p>
+        </header>
+
+        <main>
+            <p class="text-slate-700 mb-6 text-xl">
+                Chọn nguồn thẻ để bắt đầu học:
+            </p>
+            <div class="space-y-5">
+                <button id="btn-web-cards" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-4 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out text-lg transform hover:scale-105">
+                    <i class="fas fa-globe-americas mr-2"></i> Thẻ của Web
+                </button>
+                <button id="btn-user-cards" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-4 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out text-lg transform hover:scale-105">
+                    <i class="fas fa-user-graduate mr-2"></i> Thẻ của Tôi
+                </button>
+            </div>
+        </main>
+
+        <footer class="mt-10 text-sm text-slate-500">
+            <p>&copy; 2025 Flashcard App</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnWebCards = document.getElementById('btn-web-cards');
+            const btnUserCards = document.getElementById('btn-user-cards');
+
+            // Tên file của trang ứng dụng flashcard chính
+            // QUAN TRỌNG: Hãy đảm bảo tên file này khớp với tên file bạn đã đổi cho ứng dụng flashcard.
+            const flashcardAppPage = 'flashcard_app.html';
+
+            btnWebCards.addEventListener('click', () => {
+                window.location.href = `${flashcardAppPage}?source=web`;
+            });
+
+            btnUserCards.addEventListener('click', () => {
+                window.location.href = `${flashcardAppPage}?source=user`;
+            });
+        });
+    </script>
+
+</body>
+</html>
