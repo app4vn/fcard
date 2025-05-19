@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ứng dụng Flashcard Tiếng Anh (Nghĩa Lồng Ví dụ - Cải tiến UI)</title>
+    <title>Ứng dụng Flashcard Tiếng Anh</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
@@ -246,7 +246,7 @@
             <button id="hamburger-menu-btn" title="Mở bộ lọc" class="text-2xl p-2 hover:bg-slate-700 rounded-md">
                 <i class="fas fa-bars"></i>
             </button>
-            <h1 id="main-header-title" class="text-xl sm:text-2xl font-semibold text-center flex-grow">Flashcard - Thẻ của Web</h1>
+            <h1 id="main-header-title" class="text-xl sm:text-2xl font-semibold text-center flex-grow">Flashcard</h1>
             <div class="w-10 h-10"></div>
         </div>
     </header>
@@ -630,7 +630,7 @@
 
                 const meaningTextInputs = meaningBlocksContainer.querySelectorAll('.card-meaning-text-input');
                 meaningTextInputs.forEach(input => {
-                    const errorMsgElement = input.parentNode.nextElementSibling; // Error p is sibling of parent div
+                    const errorMsgElement = input.parentNode.nextElementSibling; 
                     clearFieldError(input, errorMsgElement);
                 });
             }
@@ -638,20 +638,20 @@
             // --- Input Clear Button Functionality ---
             function createClearButtonForInput(inputElement) {
                 let clearBtn = inputElement.parentNode.querySelector('.input-clear-btn');
-                if (clearBtn) {
+                if (clearBtn) { 
                     clearBtn.style.display = inputElement.value ? 'block' : 'none';
                     return clearBtn;
                 }
 
                 clearBtn = document.createElement('button');
-                clearBtn.type = 'button';
+                clearBtn.type = 'button'; 
                 clearBtn.className = 'input-clear-btn';
                 clearBtn.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>`;
                 clearBtn.setAttribute('aria-label', 'Xóa nội dung');
-                clearBtn.style.display = inputElement.value ? 'block' : 'none';
+                clearBtn.style.display = inputElement.value ? 'block' : 'none'; 
 
                 clearBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -659,7 +659,7 @@
                     inputElement.value = '';
                     clearBtn.style.display = 'none';
                     inputElement.focus();
-                    if (oldValue !== '') {
+                    if (oldValue !== '') { 
                         inputElement.dispatchEvent(new Event('input', { bubbles: true }));
                     }
                 });
@@ -682,11 +682,10 @@
                     cardGeneralNotesInput
                 ];
                 inputsWithClear.forEach(inputEl => {
-                    if (inputEl && inputEl.parentNode.classList.contains('relative')) { // Ensure parent is relative
+                    if (inputEl && inputEl.parentNode.classList.contains('relative')) { 
                         createClearButtonForInput(inputEl);
                     }
                 });
-                // For meaning blocks (dynamically added)
                 meaningBlocksContainer.querySelectorAll('.card-meaning-text-input, .card-meaning-notes-input').forEach(input => {
                      if (input && input.parentNode.classList.contains('relative')) createClearButtonForInput(input);
                 });
@@ -752,7 +751,8 @@
                             <i class="fas fa-plus mr-1"></i>Thêm Ví dụ
                         </button>
                     </div>
-                    `;
+                    `; // Nút "Thêm Khối Nghĩa Mới (bên dưới khối này)" đã được XÓA
+
                 const examplesContainerDiv = meaningBlockDiv.querySelector('.examples-for-meaning-container');
                 if (meaningBlockData.examples && meaningBlockData.examples.length > 0) {
                     meaningBlockData.examples.forEach(ex => examplesContainerDiv.appendChild(createExampleEntryElement(ex)));
@@ -768,10 +768,15 @@
                 const meaningTextInput = meaningBlockDiv.querySelector('.card-meaning-text-input');
                 const meaningTextError = meaningBlockDiv.querySelector('.meaning-text-error');
                 meaningTextInput.addEventListener('input', () => clearFieldError(meaningTextInput, meaningTextError));
-                createClearButtonForInput(meaningTextInput);
+                if (meaningTextInput.parentNode.classList.contains('relative')) {
+                    createClearButtonForInput(meaningTextInput);
+                }
+
 
                 const meaningNotesInput = meaningBlockDiv.querySelector('.card-meaning-notes-input');
-                createClearButtonForInput(meaningNotesInput);
+                 if (meaningNotesInput.parentNode.classList.contains('relative')) {
+                    createClearButtonForInput(meaningNotesInput);
+                }
 
                 return meaningBlockDiv;
             }
@@ -1565,7 +1570,29 @@
                 });
             }
 
-            function setupInitialCategoryAndSource(){cardSourceSelect.value=appState.lastSelectedSource||'web';currentDatasetSource=cardSourceSelect.value;categorySelect.value=appState.lastSelectedCategory||'phrasalVerbs';populateDeckSelects();if(currentDatasetSource==='user')userDeckSelect.value=appState.lastSelectedDeckId||'all_user_cards';updateSidebarFilterVisibility();loadVocabularyData(categorySelect.value);}
+            function setupInitialCategoryAndSource() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const sourceFromUrl = urlParams.get('source');
+
+                if (sourceFromUrl === 'user' || sourceFromUrl === 'web') {
+                    currentDatasetSource = sourceFromUrl;
+                    appState.lastSelectedSource = sourceFromUrl; // Cập nhật appState
+                } else {
+                    currentDatasetSource = appState.lastSelectedSource || 'web';
+                }
+
+                cardSourceSelect.value = currentDatasetSource;
+                categorySelect.value = appState.lastSelectedCategory || 'phrasalVerbs';
+                populateDeckSelects();
+
+                if (currentDatasetSource === 'user') {
+                    userDeckSelect.value = appState.lastSelectedDeckId || 'all_user_cards';
+                }
+
+                updateSidebarFilterVisibility();
+                updateMainHeaderTitle(); // Gọi ở đây để đảm bảo tiêu đề đúng ngay từ đầu
+                loadVocabularyData(categorySelect.value);
+            }
         });
     </script>
 </body>
