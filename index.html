@@ -55,7 +55,7 @@
         #filter-sidebar {
             transition: transform 0.3s ease-in-out;
         }
-        #speaker-btn, #speaker-example-btn, .card-action-btn-on-back, .copy-example-btn { /* Added .copy-example-btn */
+        #speaker-btn, #speaker-example-btn, .card-action-btn-on-back, .copy-example-btn {
             z-index: 10;
         }
         #typing-input::placeholder {
@@ -71,17 +71,17 @@
             flex-grow: 1;
             margin-right: 8px;
         }
-        .meaning-block {
-            border: 1px solid #e5e7eb;
+        .meaning-block { /* For modal form */
+            border: 1px solid #e5e7eb; /* gray-200 */
             padding: 1rem;
-            border-radius: 0.375rem;
+            border-radius: 0.375rem; /* rounded-md */
             margin-bottom: 1rem;
-            background-color: #f9fafb;
+            background-color: #f9fafb; /* gray-50 */
         }
-        .example-entry {
-            border: 1px dashed #d1d5db;
+        .example-entry { /* For modal form */
+            border: 1px dashed #d1d5db; /* gray-300 */
             padding: 0.75rem;
-            border-radius: 0.375rem;
+            border-radius: 0.375rem; /* rounded-md */
             margin-top: 0.75rem;
             background-color: #fff;
         }
@@ -112,9 +112,9 @@
         .example-eng-on-card {
             font-size: 1rem; /* text-base */
             color: #f0f9ff; /* sky-50 */
-            display: flex; /* For aligning text and copy button */
-            justify-content: space-between; /* For aligning text and copy button */
-            align-items: center; /* For aligning text and copy button */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .example-vie-on-card {
             font-size: 0.875rem; /* text-sm */
@@ -156,20 +156,75 @@
         .copy-example-btn {
             background: none;
             border: none;
-            padding: 0.25rem; /* p-1 */
-            margin-left: 0.5rem; /* ml-2 */
+            padding: 0.25rem;
+            margin-left: 0.5rem;
             cursor: pointer;
-            color: #bae6fd; /* sky-200 */
+            color: #bae6fd;
             transition: color 0.15s ease-in-out;
         }
         .copy-example-btn:hover {
-            color: #e0f2fe; /* sky-100 */
+            color: #e0f2fe;
         }
-        .copy-example-btn svg { /* Ensure SVGs inside button are sized */
+        .copy-example-btn svg {
             width: 16px;
             height: 16px;
         }
-
+        .form-error-message {
+            color: #ef4444;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+        .input-error-border {
+            border-color: #ef4444 !important;
+        }
+        .input-error-border:focus {
+             border-color: #ef4444 !important;
+             box-shadow: 0 0 0 1px #ef4444 !important;
+        }
+        /* Autocomplete Styles */
+        .autocomplete-suggestions-list {
+            position: absolute;
+            border: 1px solid #d1d5db; /* gray-300 */
+            background-color: white;
+            z-index: 1005;
+            max-height: 150px;
+            overflow-y: auto;
+            width: calc(100% - 2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0.375rem;
+            margin-top: 1px;
+        }
+        .autocomplete-suggestion-item {
+            padding: 0.5rem;
+            cursor: pointer;
+            color: #374151;
+        }
+        .autocomplete-suggestion-item:hover {
+            background-color: #f3f4f6;
+        }
+        .autocomplete-suggestion-item.active {
+            background-color: #e0e7ff;
+        }
+        /* Clear button for input fields */
+        .input-clear-btn {
+            position: absolute;
+            right: 0.5rem; /* Adjust as needed */
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 0.25rem;
+            cursor: pointer;
+            color: #9ca3af; /* gray-400 */
+            display: none; /* Hidden by default */
+        }
+        .input-clear-btn:hover {
+            color: #6b7280; /* gray-500 */
+        }
+        .input-clear-btn svg {
+            width: 1em; /* Use em for sizing relative to font size */
+            height: 1em;
+        }
 
     </style>
     <script>
@@ -243,7 +298,10 @@
     <main class="container mx-auto p-4 sm:p-6 flex-grow w-full max-w-2xl flex flex-col items-center">
         <section class="search-filter-main-container w-full mb-4">
             <div class="control-group bg-white p-3 rounded-lg shadow">
-                <div class="relative"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-search text-slate-400"></i></div><input type="search" id="search-input" placeholder="Nhập từ tiếng Anh..." class="w-full p-3 pl-10 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"></div>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-search text-slate-400"></i></div>
+                    <input type="search" id="search-input" placeholder="Nhập từ tiếng Anh..." class="w-full p-3 pl-10 pr-8 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
             </div>
         </section>
         <section id="practice-area" class="w-full mb-4" style="display:none;">
@@ -300,15 +358,23 @@
                 </div>
                 <div>
                     <label for="card-word-input" class="block text-sm font-medium text-slate-600">Từ/Cụm từ (Tiếng Anh) <span class="text-red-500">*</span></label>
-                    <input type="text" id="card-word-input" required class="mt-1 block w-full p-2 border rounded-md">
+                    <div class="relative">
+                        <input type="text" id="card-word-input" required class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                    <p id="card-word-error" class="form-error-message hidden"></p>
                 </div>
                 <div>
                     <label for="card-pronunciation-input" class="block text-sm font-medium text-slate-600">Phát âm</label>
-                    <input type="text" id="card-pronunciation-input" class="mt-1 block w-full p-2 border rounded-md">
+                     <div class="relative">
+                        <input type="text" id="card-pronunciation-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
                 </div>
 
                 <div class="border-t pt-4 mt-4">
-                    <h3 class="text-lg font-medium text-slate-700 mb-2">Các khối nghĩa & ví dụ:</h3>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-medium text-slate-700">Các khối nghĩa & ví dụ:</h3>
+                        <p id="meaning-blocks-general-error" class="form-error-message hidden text-right"></p>
+                    </div>
                     <div id="meaning-blocks-container" class="space-y-0"> </div>
                     <button type="button" id="add-another-meaning-block-at-end-btn" class="mt-4 text-sm bg-green-500 hover:bg-green-600 text-white font-semibold py-1.5 px-3 rounded-md shadow-sm w-full">
                         <i class="fas fa-plus mr-1"></i>Thêm Khối Nghĩa Khác (ở cuối)
@@ -317,16 +383,24 @@
 
                  <div class="border-t pt-4 mt-4">
                     <label for="card-general-notes-input" class="block text-sm font-medium text-slate-600">Ghi chú chung cho thẻ (tùy chọn)</label>
-                    <textarea id="card-general-notes-input" rows="2" class="mt-1 block w-full p-2 border rounded-md"></textarea>
+                    <div class="relative">
+                        <textarea id="card-general-notes-input" rows="2" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                        </div>
                 </div>
                 <div id="phrasal-verb-specific-fields" style="display: none;" class="border-t pt-4 mt-4">
-                    <div><label for="card-base-verb-input" class="block text-sm">Động từ gốc:</label><input type="text" id="card-base-verb-input" class="mt-1 block w-full p-2 border"></div>
-                    <div><label for="card-tags-input" class="block text-sm">Chủ đề (phẩy):</label><input type="text" id="card-tags-input" class="mt-1 block w-full p-2 border"></div>
+                    <div class="relative">
+                        <label for="card-base-verb-input" class="block text-sm font-medium text-slate-600">Động từ gốc:</label>
+                        <input type="text" id="card-base-verb-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                    <div class="mt-4 relative">
+                        <label for="card-tags-input" class="block text-sm font-medium text-slate-600">Chủ đề (cách nhau bằng dấu phẩy):</label>
+                        <input type="text" id="card-tags-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
                 </div>
             </form>
             <div class="flex justify-end space-x-3 pt-4 mt-auto border-t">
-                <button type="button" id="cancel-card-btn" class="py-2 px-4 bg-slate-200">Hủy</button>
-                <button type="submit" form="add-edit-card-form" id="save-card-btn" class="py-2 px-4 bg-indigo-600 text-white">Lưu thẻ</button>
+                <button type="button" id="cancel-card-btn" class="py-2 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md shadow-sm">Hủy</button>
+                <button type="submit" form="add-edit-card-form" id="save-card-btn" class="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow-sm">Lưu thẻ</button>
             </div>
         </div>
     </div>
@@ -414,6 +488,14 @@
             const addNewDeckBtn = document.getElementById('add-new-deck-btn');
             const existingDecksList = document.getElementById('existing-decks-list');
 
+            const cardWordError = document.getElementById('card-word-error');
+            const meaningBlocksGeneralError = document.getElementById('meaning-blocks-general-error');
+
+            // Autocomplete state
+            let baseVerbSuggestions = [];
+            let tagSuggestions = [];
+
+
             // State Variables
             let currentDatasetSource = 'web';
             let currentData = [];
@@ -454,7 +536,7 @@
                                 { "id": generateUniqueId('ex'), "eng": "A third example for this meaning.", "vie": "Ví dụ thứ ba cho nghĩa này." }
                             ]}
                         ],
-                        "tags": ["learning_information"], "generalNotes": "Một cụm động từ phổ biến."
+                        "tags": ["learning_information", "research"], "generalNotes": "Một cụm động từ phổ biến."
                     },
                     {
                         "phrasalVerb": "Give up", "baseVerb": "give", "pronunciation": "/ɡɪv ʌp/", "category": "phrasalVerbs",
@@ -465,7 +547,9 @@
                             ]}
                         ],
                         "tags": ["effort_achievement", "health_wellbeing"], "generalNotes": ""
-                    }
+                    },
+                     { "phrasalVerb": "Turn on", "baseVerb": "turn", "pronunciation": "/tɜːrn ɒn/", "category": "phrasalVerbs", "meanings": [{"id": generateUniqueId('m'), "text": "Bật (thiết bị)", "examples": [{"id": generateUniqueId('ex'), "eng": "Please turn on the light.", "vie": "Làm ơn bật đèn lên."}]}], "tags": ["daily_routine", "technology"]},
+                     { "phrasalVerb": "Turn off", "baseVerb": "turn", "pronunciation": "/tɜːrn ɒf/", "category": "phrasalVerbs", "meanings": [{"id": generateUniqueId('m'), "text": "Tắt (thiết bị)", "examples": [{"id": generateUniqueId('ex'), "eng": "Turn off the TV before you go to bed.", "vie": "Tắt TV trước khi bạn đi ngủ."}]}], "tags": ["daily_routine", "technology"]}
                 ],
                 "nouns": [
                     {
@@ -518,6 +602,96 @@
                 return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`;
             }
 
+            // --- Form Validation Helper Functions ---
+            function displayFieldError(inputElement, errorElement, message) {
+                if (errorElement) {
+                    errorElement.textContent = message;
+                    errorElement.classList.remove('hidden');
+                }
+                if (inputElement) {
+                    inputElement.classList.add('input-error-border');
+                }
+            }
+
+            function clearFieldError(inputElement, errorElement) {
+                if (errorElement) {
+                    errorElement.textContent = '';
+                    errorElement.classList.add('hidden');
+                }
+                if (inputElement) {
+                    inputElement.classList.remove('input-error-border');
+                }
+            }
+
+            function clearAllFormErrors() {
+                clearFieldError(cardWordInput, cardWordError);
+                meaningBlocksGeneralError.classList.add('hidden');
+                meaningBlocksGeneralError.textContent = '';
+
+                const meaningTextInputs = meaningBlocksContainer.querySelectorAll('.card-meaning-text-input');
+                meaningTextInputs.forEach(input => {
+                    const errorMsgElement = input.nextElementSibling;
+                    clearFieldError(input, errorMsgElement);
+                });
+            }
+
+            // --- Input Clear Button Functionality ---
+            function createClearButtonForInput(inputElement) {
+                const clearBtn = document.createElement('button');
+                clearBtn.type = 'button'; // Prevent form submission
+                clearBtn.className = 'input-clear-btn';
+                clearBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>`;
+                clearBtn.setAttribute('aria-label', 'Xóa nội dung');
+                clearBtn.style.display = inputElement.value ? 'block' : 'none'; // Initial visibility
+
+                clearBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    inputElement.value = '';
+                    clearBtn.style.display = 'none';
+                    inputElement.focus();
+                    // Dispatch input event to trigger other listeners (e.g., autocomplete)
+                    inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+
+                inputElement.addEventListener('input', () => {
+                    clearBtn.style.display = inputElement.value ? 'block' : 'none';
+                });
+                // Insert the clear button after the input element, inside its parent
+                if(inputElement.parentNode.classList.contains('relative')) { // Ensure parent is relative
+                     inputElement.parentNode.appendChild(clearBtn);
+                } else { // Fallback if parent is not relative (less ideal positioning)
+                    inputElement.insertAdjacentElement('afterend', clearBtn);
+                }
+                return clearBtn;
+            }
+
+            function initializeClearButtonsForModal() {
+                const inputsWithClear = [
+                    cardWordInput,
+                    cardPronunciationInput,
+                    cardBaseVerbInput,
+                    cardTagsInput,
+                    cardGeneralNotesInput // Added for textarea
+                ];
+                inputsWithClear.forEach(inputEl => {
+                    if (inputEl) { // Check if element exists (e.g. phrasal verb fields might be hidden)
+                         // Remove existing clear button if any (e.g., on modal reopen)
+                        const existingClearBtn = inputEl.parentNode.querySelector('.input-clear-btn');
+                        if(existingClearBtn) existingClearBtn.remove();
+                        createClearButtonForInput(inputEl);
+                    }
+                });
+            }
+             function initializeClearButtonForSearch() {
+                const existingClearBtn = searchInput.parentNode.querySelector('.input-clear-btn');
+                if(existingClearBtn) existingClearBtn.remove();
+                createClearButtonForInput(searchInput);
+            }
+
+
             // --- Functions for managing Meaning Blocks and their Examples in Modal ---
 
             function createExampleEntryElement(exampleData = { id: generateUniqueId('ex'), eng: '', vie: '', exampleNotes: '' }) {
@@ -532,11 +706,11 @@
                             <i class="fas fa-times-circle"></i> Xóa
                         </button>
                     </div>
-                    <textarea rows="2" class="card-example-eng-input block w-full p-1.5 border rounded-md text-sm" placeholder="Câu ví dụ (Tiếng Anh)">${exampleData.eng}</textarea>
+                    <textarea rows="2" class="card-example-eng-input block w-full p-1.5 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Câu ví dụ (Tiếng Anh)">${exampleData.eng}</textarea>
                     <label class="block text-xs font-medium text-slate-500 mt-1">Nghĩa ví dụ (Tiếng Việt - tùy chọn)</label>
-                    <textarea rows="1" class="card-example-vie-input block w-full p-1.5 border rounded-md text-sm" placeholder="Nghĩa tiếng Việt của ví dụ">${exampleData.vie}</textarea>
+                    <textarea rows="1" class="card-example-vie-input block w-full p-1.5 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Nghĩa tiếng Việt của ví dụ">${exampleData.vie}</textarea>
                     <label class="block text-xs font-medium text-slate-500 mt-1">Ghi chú cho ví dụ này (tùy chọn)</label>
-                    <textarea rows="1" class="card-example-notes-input block w-full p-1.5 border rounded-md text-sm" placeholder="Ghi chú cho ví dụ">${exampleData.exampleNotes}</textarea>
+                    <textarea rows="1" class="card-example-notes-input block w-full p-1.5 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Ghi chú cho ví dụ">${exampleData.exampleNotes}</textarea>
                 `;
                 exampleEntryDiv.querySelector('.remove-example-entry-btn').addEventListener('click', function() {
                     this.closest('.example-entry').remove();
@@ -556,11 +730,15 @@
                             <i class="fas fa-trash-alt"></i> Xóa Khối
                         </button>
                     </div>
-                    <input type="text" class="card-meaning-text-input block w-full p-2 border border-slate-300 rounded-md shadow-sm" value="${meaningBlockData.text}" placeholder="Nội dung nghĩa..." required>
+                    <div class="relative">
+                        <input type="text" class="card-meaning-text-input block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" value="${meaningBlockData.text}" placeholder="Nội dung nghĩa..." required>
+                        </div>
+                    <p class="meaning-text-error form-error-message hidden"></p>
 
                     <label class="block text-xs font-medium text-slate-500 mt-2">Ghi chú cho nghĩa này (tùy chọn)</label>
-                    <textarea rows="1" class="card-meaning-notes-input block w-full p-1.5 border border-slate-300 rounded-md shadow-sm text-sm" placeholder="Ghi chú cho nghĩa...">${meaningBlockData.notes}</textarea>
-
+                    <div class="relative">
+                        <textarea rows="1" class="card-meaning-notes-input block w-full p-1.5 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Ghi chú cho nghĩa...">${meaningBlockData.notes}</textarea>
+                        </div>
                     <div class="mt-3 border-t pt-3">
                         <div class="flex justify-between items-center mb-1">
                             <h4 class="text-xs font-semibold text-slate-600">Các ví dụ cho nghĩa này:</h4>
@@ -593,6 +771,15 @@
                     currentBlock.after(newBlock);
                     updateRemoveMeaningBlockButtonsState();
                 });
+                const meaningTextInput = meaningBlockDiv.querySelector('.card-meaning-text-input');
+                const meaningTextError = meaningBlockDiv.querySelector('.meaning-text-error');
+                meaningTextInput.addEventListener('input', () => clearFieldError(meaningTextInput, meaningTextError));
+                // Add clear button for meaning text input
+                createClearButtonForInput(meaningTextInput);
+                // Add clear button for meaning notes textarea
+                createClearButtonForInput(meaningBlockDiv.querySelector('.card-meaning-notes-input'));
+
+
                 return meaningBlockDiv;
             }
 
@@ -622,6 +809,85 @@
             function handleSaveDeckName(id,name,el){if(!updateDeckName(id,name)){const inp=el.querySelector('.editing-deck-input');if(inp)inp.focus();}currentEditingDeckId=null;}
             function cancelEditDeckName(id,el){const nS=el.querySelector('.deck-name-display');const aD=el.querySelector('.deck-actions');const eC=el.querySelector('.edit-deck-controls');if(eC)el.removeChild(eC);nS.style.display='flex';aD.style.display='flex';currentEditingDeckId=null;}
 
+            // --- Autocomplete Functions ---
+            function getAllUniqueBaseVerbs() {
+                const allPhrasalVerbs = [];
+                if (sampleData.phrasalVerbs) {
+                    allPhrasalVerbs.push(...sampleData.phrasalVerbs);
+                }
+                const userCards = loadUserCards();
+                userCards.forEach(card => {
+                    if (card.category === 'phrasalVerbs' && card.baseVerb) {
+                        allPhrasalVerbs.push(card);
+                    }
+                });
+                const uniqueBaseVerbs = [...new Set(allPhrasalVerbs.map(card => card.baseVerb).filter(bv => bv && bv.trim() !== ''))];
+                return uniqueBaseVerbs.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+            }
+
+            function getAllUniqueTags() {
+                const allTags = new Set();
+                if (sampleData.phrasalVerbs) {
+                    sampleData.phrasalVerbs.forEach(card => {
+                        if (card.tags && Array.isArray(card.tags)) {
+                            card.tags.forEach(tag => allTags.add(tag.trim().toLowerCase()));
+                        }
+                    });
+                }
+                const userCards = loadUserCards();
+                userCards.forEach(card => {
+                    if (card.category === 'phrasalVerbs' && card.tags && Array.isArray(card.tags)) {
+                        card.tags.forEach(tag => allTags.add(tag.trim().toLowerCase()));
+                    }
+                });
+                return [...allTags].filter(tag => tag && tag !== 'all' && !tag.startsWith('particle_')).sort((a,b) => a.localeCompare(b));
+            }
+
+
+            function showAutocompleteSuggestions(inputElement, suggestions, forTags = false) {
+                hideAutocompleteSuggestions(inputElement);
+
+                if (suggestions.length === 0) {
+                    return;
+                }
+
+                const suggestionsList = document.createElement('div');
+                suggestionsList.className = 'autocomplete-suggestions-list';
+                suggestionsList.id = `${inputElement.id}-suggestions`;
+
+                suggestions.forEach(suggestionText => {
+                    const item = document.createElement('div');
+                    item.className = 'autocomplete-suggestion-item';
+                    item.textContent = suggestionText;
+                    item.onclick = () => {
+                        if (forTags) {
+                            const currentValue = inputElement.value;
+                            const parts = currentValue.split(',').map(p => p.trim());
+                            parts.pop(); 
+                            parts.push(suggestionText); 
+                            inputElement.value = parts.join(', ') + ', '; 
+                        } else {
+                            inputElement.value = suggestionText;
+                        }
+                        hideAutocompleteSuggestions(inputElement);
+                        inputElement.focus();
+                        // Manually trigger input event for the input to update clear button visibility
+                        inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                    };
+                    suggestionsList.appendChild(item);
+                });
+                inputElement.parentNode.appendChild(suggestionsList);
+            }
+
+            function hideAutocompleteSuggestions(inputElement) {
+                const listId = `${inputElement.id}-suggestions`;
+                const existingList = document.getElementById(listId);
+                if (existingList) {
+                    existingList.remove();
+                }
+            }
+
+
             // --- UI Functions ---
             function openSidebar(){filterSidebar.classList.remove('-translate-x-full');filterSidebar.classList.add('translate-x-0');sidebarOverlay.classList.remove('hidden');updateSidebarFilterVisibility();}
             function closeSidebar(){filterSidebar.classList.add('-translate-x-full');filterSidebar.classList.remove('translate-x-0');sidebarOverlay.classList.add('hidden');}
@@ -629,13 +895,26 @@
             function updateMainHeaderTitle(){const sT=currentDatasetSource==='web'?"Thẻ của Web":"Thẻ của Tôi";let dT="";if(currentDatasetSource==='user'&&userDeckSelect.value&&userDeckSelect.value!=='all_user_cards'&&userDeckSelect.value!=='unassigned_cards'){const sD=userDecks.find(d=>d.id===userDeckSelect.value);if(sD)dT=` - ${sD.name}`; }else if(currentDatasetSource==='user'&&userDeckSelect.value==='unassigned_cards'){dT=" - Thẻ chưa có bộ";}mainHeaderTitle.textContent=`Flashcard - ${sT}${dT}`;}
 
             function openAddEditModal(mode = 'add', cardData = null) {
+                clearAllFormErrors();
                 modalTitle.textContent = mode === 'add' ? 'Thêm thẻ mới' : 'Sửa thẻ';
                 addEditCardForm.reset();
                 cardIdInput.value = '';
                 currentEditingCardId = null;
                 meaningBlocksContainer.innerHTML = '';
 
-                phrasalVerbSpecificFields.style.display = categorySelect.value === 'phrasalVerbs' ? 'block' : 'none';
+                const isPhrasalVerb = categorySelect.value === 'phrasalVerbs';
+                phrasalVerbSpecificFields.style.display = isPhrasalVerb ? 'block' : 'none';
+
+                if (isPhrasalVerb) {
+                    baseVerbSuggestions = getAllUniqueBaseVerbs();
+                    tagSuggestions = getAllUniqueTags();
+                } else {
+                    hideAutocompleteSuggestions(cardBaseVerbInput);
+                    hideAutocompleteSuggestions(cardTagsInput);
+                }
+                
+                initializeClearButtonsForModal(); // Setup clear buttons for inputs in modal
+
 
                 if (cardSourceSelect.value === 'user') {
                     modalDeckAssignmentContainer.style.display = 'block';
@@ -656,23 +935,35 @@
                     } else addMeaningBlockToEnd();
 
                     if (cardData.category === 'phrasalVerbs') {
-                        phrasalVerbSpecificFields.style.display = 'block';
                         cardBaseVerbInput.value = cardData.baseVerb || '';
-                        cardTagsInput.value = Array.isArray(cardData.tags) ? cardData.tags.filter(t => t !== 'all' && !t.startsWith('particle_')).join(', ') : '';
-                    } else phrasalVerbSpecificFields.style.display = 'none';
+                        cardTagsInput.value = Array.isArray(cardData.tags) ? cardData.tags.filter(t => t && t !== 'all' && !t.startsWith('particle_')).join(', ') : '';
+                    }
                 } else {
                     addMeaningBlockToEnd();
-                    phrasalVerbSpecificFields.style.display = categorySelect.value === 'phrasalVerbs' ? 'block' : 'none';
                     cardGeneralNotesInput.value = '';
                 }
                 updateRemoveMeaningBlockButtonsState();
+                // Manually trigger input event for all relevant inputs to show/hide clear buttons
+                [cardWordInput, cardPronunciationInput, cardBaseVerbInput, cardTagsInput, cardGeneralNotesInput].forEach(input => {
+                    if (input) input.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+                meaningBlocksContainer.querySelectorAll('.card-meaning-text-input, .card-meaning-notes-input').forEach(input => {
+                     if (input) input.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+
 
                 addEditCardModal.classList.remove('hidden', 'opacity-0');
                 addEditCardModal.querySelector('.modal-content').classList.remove('scale-95');
                 addEditCardModal.querySelector('.modal-content').classList.add('scale-100');
             }
 
-            function closeAddEditModal(){addEditCardModal.classList.add('opacity-0');addEditCardModal.querySelector('.modal-content').classList.add('scale-95');setTimeout(()=>addEditCardModal.classList.add('hidden'),250);}
+            function closeAddEditModal(){
+                hideAutocompleteSuggestions(cardBaseVerbInput);
+                hideAutocompleteSuggestions(cardTagsInput);
+                addEditCardModal.classList.add('opacity-0');
+                addEditCardModal.querySelector('.modal-content').classList.add('scale-95');
+                setTimeout(()=>addEditCardModal.classList.add('hidden'),250);
+            }
             function clearLearningTimer(){clearTimeout(learningCardNextButtonTimer);learningCardNextButtonTimer=null;clearInterval(learningCardCountdownInterval);learningCardCountdownInterval=null;if(nextBtn&&nextBtn.textContent.includes('('))nextBtn.innerHTML='Tiếp <i class="fas fa-arrow-right ml-1"></i>';}
             function startLearningTimer(){clearLearningTimer();if(currentData.length===0||practiceType!=="off"||!nextBtn){if(nextBtn){nextBtn.disabled=(currentIndex>=currentData.length-1||currentData.length===0);if(!nextBtn.textContent.includes('('))nextBtn.innerHTML='Tiếp <i class="fas fa-arrow-right ml-1"></i>';}updateCardInfo();return;}const i=currentData[currentIndex];const cV=i.category;const id=getCardIdentifier(i,cV);const sO=getCardStatus(id,cV,i.isUserCard);if(currentDatasetSource==='web'&&sO&&sO.status==='learning'&&!i.isUserCard){nextBtn.disabled=true;let c=30;nextBtn.innerHTML=`Tiếp (${c}s) <i class="fas fa-arrow-right ml-1"></i>`;learningCardCountdownInterval=setInterval(()=>{c--;if(c>0){if(nextBtn.disabled)nextBtn.innerHTML=`Tiếp (${c}s) <i class="fas fa-arrow-right ml-1"></i>`;}else{clearInterval(learningCardCountdownInterval);learningCardCountdownInterval=null;}},1000);learningCardNextButtonTimer=setTimeout(()=>{clearInterval(learningCardCountdownInterval);learningCardCountdownInterval=null;nextBtn.disabled=false;nextBtn.innerHTML='Tiếp <i class="fas fa-arrow-right ml-1"></i>';updateCardInfo();},30000);}else{nextBtn.disabled=(currentIndex>=currentData.length-1||currentData.length===0);nextBtn.innerHTML='Tiếp <i class="fas fa-arrow-right ml-1"></i>';}updateCardInfo();}
 
@@ -691,10 +982,50 @@
             function saveUserCards(arr){try{localStorage.setItem(userCardsStorageKey,JSON.stringify(arr));}catch(e){}}
 
             function handleSaveCard() {
+                clearAllFormErrors();
+                let isValid = true;
+
                 const category = categorySelect.value;
                 const word = cardWordInput.value.trim();
 
+                if (!word) {
+                    displayFieldError(cardWordInput, cardWordError, "Từ/Cụm từ không được để trống.");
+                    isValid = false;
+                }
+
                 const meaningBlockElements = meaningBlocksContainer.querySelectorAll('.meaning-block');
+                let hasAtLeastOneValidMeaning = false;
+
+                if (meaningBlockElements.length === 0) {
+                    meaningBlocksGeneralError.textContent = "Cần ít nhất một khối nghĩa.";
+                    meaningBlocksGeneralError.classList.remove('hidden');
+                    isValid = false;
+                } else {
+                    meaningBlockElements.forEach(block => {
+                        const meaningTextInput = block.querySelector('.card-meaning-text-input');
+                        const meaningTextError = meaningTextInput.parentNode.nextElementSibling; // Error <p> is sibling of parent div
+                        const meaningText = meaningTextInput.value.trim();
+                        if (!meaningText) {
+                            displayFieldError(meaningTextInput, meaningTextError, "Nội dung nghĩa không được để trống.");
+                            isValid = false;
+                        } else {
+                            hasAtLeastOneValidMeaning = true;
+                            clearFieldError(meaningTextInput, meaningTextError);
+                        }
+                    });
+                }
+
+                if (!hasAtLeastOneValidMeaning && meaningBlockElements.length > 0) {
+                    meaningBlocksGeneralError.textContent = "Cần ít nhất một khối nghĩa có nội dung.";
+                    meaningBlocksGeneralError.classList.remove('hidden');
+                    isValid = false;
+                }
+
+
+                if (!isValid) {
+                    return;
+                }
+
                 const meaningsData = Array.from(meaningBlockElements).map(block => {
                     const meaningText = block.querySelector('.card-meaning-text-input').value.trim();
                     if (!meaningText) return null;
@@ -720,10 +1051,6 @@
                 }).filter(m => m);
 
 
-                if (!word || meaningsData.length === 0) {
-                    alert("Từ/Cụm từ và ít nhất một Khối Nghĩa (có nội dung nghĩa) là bắt buộc!"); return;
-                }
-
                 const newCardData = {
                     pronunciation: cardPronunciationInput.value.trim(),
                     meanings: meaningsData,
@@ -737,7 +1064,10 @@
                 if (category === 'phrasalVerbs') {
                     newCardData.phrasalVerb = word;
                     newCardData.baseVerb = cardBaseVerbInput.value.trim() || null;
-                    newCardData.tags = cardTagsInput.value.trim() ? cardTagsInput.value.split(',').map(t=>t.trim().toLowerCase()).filter(t=>t) : [];
+                    newCardData.tags = cardTagsInput.value.trim()
+                        .split(',')
+                        .map(t => t.trim().toLowerCase())
+                        .filter(t => t && t !== 'all' && !t.startsWith('particle_'));
                 } else newCardData.word = word;
 
                 let allUserCardsArray = loadUserCards();
@@ -946,7 +1276,7 @@
                     wordDisplay.dataset.ttsText = textForTTS;
                     pronunciationDisplay.textContent = item.pronunciation || '';
                     if (iCV === 'phrasalVerbs' && item.tags && practiceType !== 'word_quiz') {
-                        const dT = item.tags.filter(t => t !== 'all' && !t.startsWith('particle_') && tagDisplayNames[t]).map(t => tagDisplayNames[t]);
+                        const dT = item.tags.filter(t => t && t !== 'all' && !t.startsWith('particle_') && tagDisplayNames[t]).map(t => tagDisplayNames[t]);
                         tagsDisplayFront.textContent = dT.join(' | '); tagsDisplayFront.style.display = dT.length > 0 ? 'block' : 'none';
                     } else { tagsDisplayFront.textContent = ''; tagsDisplayFront.style.display = 'none'; }
 
@@ -1006,7 +1336,7 @@
 
                                 const examplesListDiv = document.createElement('div');
                                 examplesListDiv.className = "space-y-1.5";
-                                examplesListDiv.dataset.meaningId = mObj.id; // Add a unique identifier for this list
+                                examplesListDiv.dataset.meaningId = mObj.id;
 
                                 const maxVisibleExamples = 1;
                                 const totalExamples = mObj.examples.length;
@@ -1021,7 +1351,7 @@
                                     const eP = document.createElement('p');
                                     eP.className="example-eng-on-card";
                                     
-                                    const textSpan = document.createElement('span'); // Span for text content
+                                    const textSpan = document.createElement('span');
                                     const enLabel = document.createElement('span');
                                     enLabel.className = 'example-label';
                                     enLabel.textContent = 'EN: ';
@@ -1050,7 +1380,6 @@
                                             }, 1500);
                                         }).catch(err => {
                                             console.error('Không thể sao chép: ', err);
-                                            // Optionally, provide error feedback to the user
                                         });
                                     };
                                     eP.appendChild(copyBtn);
@@ -1159,7 +1488,7 @@
                         !e.target.closest('#edit-card-on-back-btn') &&
                         !e.target.closest('#delete-card-on-back-btn') &&
                         !e.target.closest('.toggle-examples-btn') &&
-                        !e.target.closest('.copy-example-btn') // Ignore clicks on copy button
+                        !e.target.closest('.copy-example-btn')
                         ) {
                         flashcardElement.classList.toggle('flipped');
                     }
@@ -1173,6 +1502,76 @@
                 typingInput.addEventListener('keypress', (e)=>{if(e.key==='Enter'&&practiceType==='typing_practice'&&!submitTypingAnswerBtn.disabled)checkTypingAnswer();});
 
                 addAnotherMeaningBlockAtEndBtn.addEventListener('click', () => addMeaningBlockToEnd());
+
+                cardWordInput.addEventListener('input', () => clearFieldError(cardWordInput, cardWordError));
+                initializeClearButtonForSearch(); // Initialize for main search input
+
+                // Autocomplete for Base Verb
+                cardBaseVerbInput.addEventListener('input', () => {
+                    const inputValue = cardBaseVerbInput.value.toLowerCase();
+                    if (inputValue.length === 0) {
+                        hideAutocompleteSuggestions(cardBaseVerbInput);
+                        return;
+                    }
+                    const filteredSuggestions = baseVerbSuggestions.filter(verb =>
+                        verb.toLowerCase().includes(inputValue)
+                    );
+                    showAutocompleteSuggestions(cardBaseVerbInput, filteredSuggestions);
+                });
+                cardBaseVerbInput.addEventListener('focus', () => {
+                    const inputValue = cardBaseVerbInput.value.toLowerCase();
+                     const filteredSuggestions = baseVerbSuggestions.filter(verb =>
+                        verb.toLowerCase().includes(inputValue)
+                    );
+                    if (filteredSuggestions.length > 0 || inputValue.length === 0) {
+                        showAutocompleteSuggestions(cardBaseVerbInput, filteredSuggestions.slice(0, 5));
+                    }
+                });
+
+                // Autocomplete for Tags
+                cardTagsInput.addEventListener('input', () => {
+                    const fullInputValue = cardTagsInput.value;
+                    const lastCommaIndex = fullInputValue.lastIndexOf(',');
+                    const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase();
+
+                    if (currentTagQuery.length === 0) {
+                        hideAutocompleteSuggestions(cardTagsInput);
+                        return;
+                    }
+                    const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase());
+                    const filteredSuggestions = tagSuggestions.filter(tag =>
+                        tag.toLowerCase().includes(currentTagQuery) &&
+                        !alreadyAddedTags.includes(tag.toLowerCase())
+                    );
+                    showAutocompleteSuggestions(cardTagsInput, filteredSuggestions, true);
+                });
+                 cardTagsInput.addEventListener('focus', () => {
+                    const fullInputValue = cardTagsInput.value;
+                    const lastCommaIndex = fullInputValue.lastIndexOf(',');
+                    const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase();
+                    const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase());
+
+                    const filteredSuggestions = tagSuggestions.filter(tag =>
+                        tag.toLowerCase().includes(currentTagQuery) &&
+                        !alreadyAddedTags.includes(tag.toLowerCase())
+                    );
+                     if (filteredSuggestions.length > 0 || currentTagQuery.length === 0) {
+                        showAutocompleteSuggestions(cardTagsInput, filteredSuggestions.slice(0, 5), true);
+                    }
+                });
+
+
+                 // Hide suggestions when clicking outside
+                document.addEventListener('click', function(event) {
+                    const activeSuggestionsList = document.querySelector('.autocomplete-suggestions-list');
+                    if (activeSuggestionsList) {
+                        const inputId = activeSuggestionsList.id.replace('-suggestions', '');
+                        const inputElement = document.getElementById(inputId);
+                        if (inputElement && !inputElement.contains(event.target) && !activeSuggestionsList.contains(event.target)) {
+                            hideAutocompleteSuggestions(inputElement);
+                        }
+                    }
+                });
             }
 
             function setupInitialCategoryAndSource(){cardSourceSelect.value=appState.lastSelectedSource||'web';currentDatasetSource=cardSourceSelect.value;categorySelect.value=appState.lastSelectedCategory||'phrasalVerbs';populateDeckSelects();if(currentDatasetSource==='user')userDeckSelect.value=appState.lastSelectedDeckId||'all_user_cards';updateSidebarFilterVisibility();loadVocabularyData(categorySelect.value);}
