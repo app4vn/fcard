@@ -225,6 +225,23 @@
             width: 1em;
             height: 1em;
         }
+        /* Styling for the "Add First Card" button on empty state */
+        #empty-state-add-card-btn-on-card {
+            /* Re-use styles from the old #empty-state-add-card-btn or define new ones */
+            background-color: #10b981; /* emerald-500 */
+            color: white;
+            font-weight: 600; /* font-semibold */
+            padding: 0.75rem 1.5rem; /* py-3 px-6 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); /* shadow-md */
+            transition: all 0.15s ease-in-out;
+        }
+        #empty-state-add-card-btn-on-card:hover {
+            background-color: #059669; /* emerald-600 */
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); /* shadow-lg */
+            transform: translateY(-2px);
+        }
+
 
     </style>
     <script>
@@ -308,6 +325,7 @@
             <div id="multiple-choice-options" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full"></div>
             <div id="feedback-message" class="mt-3 p-3 rounded-md w-full text-center font-semibold hidden"></div>
         </section>
+        
         <section class="flashcard-container w-full h-[380px] sm:h-[400px] mb-4">
             <div id="flashcard" class="flashcard relative w-full h-full">
                 <div class="card-front absolute w-full h-full bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl shadow-xl p-5 flex flex-col items-center justify-center overflow-hidden">
@@ -423,6 +441,9 @@
             const cardSourceSelect = document.getElementById('card-source-select');
             const categorySelect = document.getElementById('category');
             const flashcardElement = document.getElementById('flashcard');
+            const flashcardContainer = document.querySelector('.flashcard-container'); // Ensure this is selected
+            // const emptyStateMessageContainer = document.getElementById('empty-state-container'); // This is removed from HTML
+
             const wordDisplay = document.getElementById('word-display');
             const pronunciationDisplay = document.getElementById('pronunciation-display');
             const meaningDisplayContainer = document.getElementById('meaning-display-container');
@@ -1218,13 +1239,20 @@
             // HÀM updateFlashcard ĐÃ ĐƯỢC CẬP NHẬT VỚI CÁC TÍNH NĂNG MỚI
             // ========================================================================
             function updateFlashcard() {
+                console.log("[updateFlashcard] Called. Current practiceType:", practiceType);
                 clearLearningTimer(); currentAnswerChecked = false;
                 feedbackMessage.textContent = ''; feedbackMessage.className = 'mt-3 p-3 hidden';
                 multipleChoiceOptionsContainer.innerHTML = '';
                 typingInputContainer.style.display = 'none'; typingInput.value = ''; typingInput.disabled = false; submitTypingAnswerBtn.disabled = false;
-                pronunciationDisplay.style.display = 'block'; tagsDisplayFront.style.display = 'block';
-                speakerBtn.style.display = 'block'; speakerExampleBtn.style.display = 'block';
-                flipBtn.style.display = 'inline-flex'; flashcardElement.classList.remove('practice-mode-word-quiz');
+                
+                // Reset card elements for normal display or empty state
+                wordDisplay.innerHTML = '';
+                wordDisplay.classList.remove('text-center', 'flex', 'flex-col', 'items-center', 'justify-center', 'h-full', 'px-4'); // Remove empty state specific styles
+                pronunciationDisplay.textContent = '';
+                tagsDisplayFront.textContent = '';
+                meaningDisplayContainer.innerHTML = '';
+                notesDisplay.innerHTML = '';
+                flashcardElement.classList.remove('flipped');
 
                 const oldEditBtnOnCard = document.getElementById('edit-card-on-back-btn');
                 if (oldEditBtnOnCard) oldEditBtnOnCard.remove();
@@ -1233,41 +1261,93 @@
 
                 if (practiceType !== "off") {
                     flipBtn.style.display = 'none'; practiceArea.style.display = 'block';
-                    flashcardElement.classList.add('practice-mode-front-only'); flashcardElement.classList.remove('flipped');
+                    flashcardElement.classList.add('practice-mode-front-only');
                     if (practiceType === 'typing_practice') {
                         typingInputContainer.style.display = 'block'; multipleChoiceOptionsContainer.style.display = 'none';
-                        if (currentData.length > 0) { const cI = currentData[currentIndex]; currentCorrectAnswerForPractice = (cI.category === 'phrasalVerbs' ? cI.phrasalVerb : cI.word) || ''; }
-                        else typingInputContainer.innerHTML = '<p>Không có thẻ.</p>';
+                        if (currentData.length > 0 && currentData[currentIndex]) { 
+                            const cI = currentData[currentIndex]; 
+                            currentCorrectAnswerForPractice = (cI.category === 'phrasalVerbs' ? cI.phrasalVerb : cI.word) || ''; 
+                        } else {
+                             typingInputContainer.innerHTML = '<p>Không có thẻ.</p>'; // Should not happen if item check is correct
+                        }
                     } else {
                         typingInputContainer.style.display = 'none'; multipleChoiceOptionsContainer.style.display = 'grid';
-                         if (currentData.length > 0) displayMultipleChoiceOptions(); else multipleChoiceOptionsContainer.innerHTML = '<p>Không có thẻ.</p>';
+                         if (currentData.length > 0 && currentData[currentIndex]) displayMultipleChoiceOptions(); else multipleChoiceOptionsContainer.innerHTML = '<p>Không có thẻ.</p>';
                     }
-                    if (practiceType === 'word_quiz') { pronunciationDisplay.style.display = 'none'; tagsDisplayFront.style.display = 'none'; speakerBtn.style.display = 'none'; flashcardElement.classList.add('practice-mode-word-quiz'); }
+                    if (practiceType === 'word_quiz') { 
+                        pronunciationDisplay.style.display = 'none'; 
+                        tagsDisplayFront.style.display = 'none'; 
+                        speakerBtn.style.display = 'none'; 
+                        flashcardElement.classList.add('practice-mode-word-quiz'); 
+                    } else {
+                        pronunciationDisplay.style.display = 'block';
+                        tagsDisplayFront.style.display = 'block';
+                        speakerBtn.style.display = 'block';
+                        flashcardElement.classList.remove('practice-mode-word-quiz');
+                    }
                 } else {
-                    practiceArea.style.display = 'none'; flashcardElement.classList.remove('practice-mode-front-only'); flashcardElement.classList.remove('flipped');
+                    practiceArea.style.display = 'none'; 
+                    flashcardElement.classList.remove('practice-mode-front-only');
+                    pronunciationDisplay.style.display = 'block';
+                    tagsDisplayFront.style.display = 'block';
+                    speakerBtn.style.display = 'block';
+                    flipBtn.style.display = 'inline-flex';
                 }
 
-                const item = currentData.length > 0 ? currentData[currentIndex] : null;
-                meaningDisplayContainer.innerHTML = '';
-                notesDisplay.innerHTML = '';
 
-                if (!item) {
-                    wordDisplay.innerHTML = `<span class="text-slate-500">Không có từ nào phù hợp.</span>`;
-                    pronunciationDisplay.textContent = ''; tagsDisplayFront.textContent = '';
-                    meaningDisplayContainer.innerHTML = '<p class="text-slate-400 italic">N/A</p>';
-                    speakerBtn.disabled = true; speakerExampleBtn.disabled = true; updateStatusButtonsUI(null, null);
-                } else {
-                    wordDisplay.innerHTML = ''; currentWordSpansMeta = []; let accCC = 0;
+                const item = currentData.length > 0 ? currentData[currentIndex] : null;
+                console.log("[updateFlashcard] Item to display:", item);
+
+                if (!item) { 
+                    console.log("[updateFlashcard] No item. Preparing empty state on card front.");
+                    wordDisplay.classList.add('text-center', 'flex', 'flex-col', 'items-center', 'justify-center', 'h-full', 'px-4');
+                    
+                    if (currentDatasetSource === 'user' && loadUserCards().length === 0) {
+                        wordDisplay.innerHTML = `
+                            <p class="text-xl text-slate-200 mb-6">Bạn chưa có thẻ nào trong bộ sưu tập "Thẻ của Tôi".</p>
+                            <button id="empty-state-add-card-btn-on-card" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out text-lg transform hover:scale-105">
+                                <i class="fas fa-plus mr-2"></i>Tạo Thẻ Đầu Tiên
+                            </button>
+                        `;
+                        const emptyAddBtn = document.getElementById('empty-state-add-card-btn-on-card');
+                        if(emptyAddBtn) emptyAddBtn.addEventListener('click', (e) => {
+                            e.stopPropagation(); 
+                            openAddEditModal('add');
+                        });
+                    } else {
+                        wordDisplay.innerHTML = `<p class="text-xl text-slate-200">Không có thẻ nào phù hợp với bộ lọc hiện tại. Hãy thử điều chỉnh bộ lọc trong menu <i class="fas fa-bars"></i> nhé!</p>`;
+                    }
+                    pronunciationDisplay.style.display = 'none';
+                    tagsDisplayFront.style.display = 'none';
+                    speakerBtn.style.display = 'none';
+                    speakerExampleBtn.style.display = 'none';
+                    flipBtn.disabled = true; 
+                    updateStatusButtonsUI(null, null); 
+
+                } else { 
+                    // wordDisplay classes are reset at the start of the function
+                    pronunciationDisplay.style.display = 'block';
+                    // tagsDisplayFront display is handled by its own logic later
+                    speakerBtn.style.display = 'block';
+                    speakerExampleBtn.style.display = 'block';
+                    flipBtn.disabled = (practiceType !== "off");
+
+
+                    currentWordSpansMeta = []; let accCC = 0;
                     const iCV = item.category;
                     const firstMeaningText = (item.meanings && item.meanings.length > 0) ? item.meanings[0].text : '';
                     let textForTTS;
 
                     if (practiceType === 'word_quiz') {
                         textForTTS = firstMeaningText;
-                        const mTSp = document.createElement('span'); mTSp.className = 'text-3xl sm:text-4xl font-bold';
+                        const mTSp = document.createElement('span'); 
+                        mTSp.className = 'text-3xl sm:text-4xl font-bold'; 
                         const segs = firstMeaningText.split(/(\s+)/);
                         segs.forEach(s => { if (s.trim() !== '') { const wS = document.createElement('span'); wS.textContent = s; mTSp.appendChild(wS); currentWordSpansMeta.push({ element: wS, start: accCC, length: s.length }); } else mTSp.appendChild(document.createTextNode(s)); accCC += s.length; });
                         wordDisplay.appendChild(mTSp);
+                        pronunciationDisplay.style.display = 'none'; 
+                        tagsDisplayFront.style.display = 'none'; 
+                        speakerBtn.style.display = 'none'; 
                     } else {
                         const oT = (iCV === 'phrasalVerbs') ? (item.phrasalVerb || '') : (item.word || '');
                         let bTFM = "";
@@ -1281,26 +1361,28 @@
                             if (pI < pts.length - 1) { const nPID = pts[pI + 1].startsWith('(') && pts[pI + 1].endsWith(')'); if (!p.endsWith(' ') && !pts[pI + 1].startsWith(' ') && !(iD && nPID)) { wordDisplay.appendChild(document.createTextNode(' ')); bTFM += ' '; } }
                         });
                         textForTTS = bTFM;
+                        pronunciationDisplay.style.display = 'block';
+                        tagsDisplayFront.style.display = 'block';
+                        speakerBtn.style.display = 'block';
                     }
                     wordDisplay.dataset.ttsText = textForTTS;
                     pronunciationDisplay.textContent = item.pronunciation || '';
                     if (iCV === 'phrasalVerbs' && item.tags && practiceType !== 'word_quiz') {
                         const dT = item.tags.filter(t => t && t !== 'all' && !t.startsWith('particle_') && tagDisplayNames[t]).map(t => tagDisplayNames[t]);
-                        tagsDisplayFront.textContent = dT.join(' | '); tagsDisplayFront.style.display = dT.length > 0 ? 'block' : 'none';
-                    } else { tagsDisplayFront.textContent = ''; tagsDisplayFront.style.display = 'none'; }
+                        tagsDisplayFront.textContent = dT.join(' | '); 
+                        tagsDisplayFront.style.display = dT.length > 0 ? 'block' : 'none';
+                    } else { 
+                        tagsDisplayFront.textContent = ''; 
+                        tagsDisplayFront.style.display = 'none'; 
+                    }
 
                     if (item.isUserCard) {
                         const cardBackElement = flashcardElement.querySelector('.card-back');
-
                         const editOnBackBtn = document.createElement('button');
                         editOnBackBtn.id = 'edit-card-on-back-btn';
                         editOnBackBtn.title = 'Sửa thẻ này';
                         editOnBackBtn.className = 'card-action-btn-on-back absolute top-1.5 right-1.5 p-1.5 text-white hover:text-indigo-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20';
-                        editOnBackBtn.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" style="width: 20px; height: 20px;">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                            </svg>
-                        `;
+                        editOnBackBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" style="width: 20px; height: 20px;"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>`;
                         editOnBackBtn.onclick = (e) => { e.stopPropagation(); openAddEditModal('edit', item); };
                         cardBackElement.appendChild(editOnBackBtn);
 
@@ -1308,21 +1390,15 @@
                         deleteOnBackBtn.id = 'delete-card-on-back-btn';
                         deleteOnBackBtn.title = 'Xóa thẻ này';
                         deleteOnBackBtn.className = 'card-action-btn-on-back absolute top-1.5 left-1.5 p-1.5 text-white hover:text-red-300 transition-colors rounded-full hover:bg-black hover:bg-opacity-20';
-                        deleteOnBackBtn.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" style="width: 20px; height: 20px;">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.502 0c-.34.055-.68.11-.1.023.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                            </svg>
-                        `;
+                        deleteOnBackBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" style="width: 20px; height: 20px;"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.502 0c-.34.055-.68.11-.1.023.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>`;
                         deleteOnBackBtn.onclick = (e) => { e.stopPropagation(); handleDeleteCard(); };
                         cardBackElement.appendChild(deleteOnBackBtn);
                     }
-
 
                     if (item.meanings && item.meanings.length > 0) {
                         item.meanings.forEach((mObj, idx) => {
                             const meaningBlockDiv = document.createElement('div');
                             meaningBlockDiv.className = `meaning-block-on-card ${idx > 0 ? "mt-4 pt-3 border-t border-blue-400 border-opacity-50" : "bg-black bg-opacity-20 p-3 rounded-lg"}`;
-
                             const meaningTextP = document.createElement('p');
                             meaningTextP.className = "meaning-text-on-card";
                             if (item.meanings.length > 1) {
@@ -1331,35 +1407,28 @@
                                 meaningTextP.textContent = mObj.text;
                             }
                             meaningBlockDiv.appendChild(meaningTextP);
-
                             if (mObj.notes) {
                                 const meaningNotesP = document.createElement('p');
                                 meaningNotesP.className = "meaning-notes-on-card";
                                 meaningNotesP.textContent = mObj.notes;
                                 meaningBlockDiv.appendChild(meaningNotesP);
                             }
-
                             if (mObj.examples && mObj.examples.length > 0) {
                                 const examplesContainer = document.createElement('div');
                                 examplesContainer.className = "ml-3 mt-3";
-
                                 const examplesListDiv = document.createElement('div');
                                 examplesListDiv.className = "space-y-1.5";
                                 examplesListDiv.dataset.meaningId = mObj.id;
-
                                 const maxVisibleExamples = 1;
                                 const totalExamples = mObj.examples.length;
-
                                 mObj.examples.forEach((ex, exIdx) => {
                                     const exD = document.createElement('div');
                                     exD.className="example-item-on-card";
                                     if (exIdx >= maxVisibleExamples) {
                                         exD.classList.add('hidden');
                                     }
-
                                     const eP = document.createElement('p');
                                     eP.className="example-eng-on-card";
-                                    
                                     const textSpan = document.createElement('span');
                                     const enLabel = document.createElement('span');
                                     enLabel.className = 'example-label';
@@ -1367,80 +1436,27 @@
                                     textSpan.appendChild(enLabel);
                                     textSpan.appendChild(document.createTextNode(ex.eng));
                                     eP.appendChild(textSpan);
-
                                     const copyBtn = document.createElement('button');
                                     copyBtn.className = 'copy-example-btn';
                                     copyBtn.title = 'Sao chép ví dụ';
-                                    const initialCopySvg = `
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
-                                        </svg>`;
-                                    const copiedSvg = `
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                                          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                        </svg>`;
+                                    const initialCopySvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" /></svg>`;
+                                    const copiedSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
                                     copyBtn.innerHTML = initialCopySvg;
-                                    copyBtn.onclick = (e) => {
-                                        e.stopPropagation();
-                                        navigator.clipboard.writeText(ex.eng).then(() => {
-                                            copyBtn.innerHTML = copiedSvg;
-                                            setTimeout(() => {
-                                                copyBtn.innerHTML = initialCopySvg;
-                                            }, 1500);
-                                        }).catch(err => {
-                                            console.error('Không thể sao chép: ', err);
-                                        });
-                                    };
+                                    copyBtn.onclick = (e) => { e.stopPropagation(); navigator.clipboard.writeText(ex.eng).then(() => { copyBtn.innerHTML = copiedSvg; setTimeout(() => { copyBtn.innerHTML = initialCopySvg; }, 1500); }).catch(err => { console.error('Không thể sao chép: ', err); }); };
                                     eP.appendChild(copyBtn);
                                     exD.appendChild(eP);
-
-
-                                    if(ex.vie){
-                                        const vP = document.createElement('p');
-                                        vP.className="example-vie-on-card";
-                                        const vnLabel = document.createElement('span');
-                                        vnLabel.className = 'example-label';
-                                        vnLabel.textContent = 'VN: ';
-                                        vP.appendChild(vnLabel);
-                                        vP.appendChild(document.createTextNode(`(${ex.vie})`));
-                                        exD.appendChild(vP);
-                                    }
-                                    if(ex.exampleNotes){
-                                        const nP=document.createElement('p');
-                                        nP.className="example-notes-on-card";
-                                        nP.textContent=`Ghi chú VD: ${ex.exampleNotes}`;
-                                        exD.appendChild(nP);
-                                    }
+                                    if(ex.vie){ const vP = document.createElement('p');vP.className="example-vie-on-card";const vnLabel = document.createElement('span');vnLabel.className = 'example-label';vnLabel.textContent = 'VN: ';vP.appendChild(vnLabel);vP.appendChild(document.createTextNode(`(${ex.vie})`));exD.appendChild(vP); }
+                                    if(ex.exampleNotes){ const nP=document.createElement('p');nP.className="example-notes-on-card";nP.textContent=`Ghi chú VD: ${ex.exampleNotes}`;exD.appendChild(nP); }
                                     examplesListDiv.appendChild(exD);
                                 });
                                 examplesContainer.appendChild(examplesListDiv);
-
                                 if (totalExamples > maxVisibleExamples) {
                                     const toggleExamplesBtn = document.createElement('button');
                                     toggleExamplesBtn.className = "toggle-examples-btn";
                                     let hiddenCount = totalExamples - maxVisibleExamples;
                                     toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`;
                                     toggleExamplesBtn.dataset.expanded = "false";
-
-                                    toggleExamplesBtn.onclick = (e) => {
-                                        e.stopPropagation();
-                                        const isExpanded = toggleExamplesBtn.dataset.expanded === "true";
-                                        const exampleItems = examplesListDiv.querySelectorAll('.example-item-on-card');
-
-                                        exampleItems.forEach((item, itemIdx) => {
-                                            if (itemIdx >= maxVisibleExamples) {
-                                                item.classList.toggle('hidden', isExpanded);
-                                            }
-                                        });
-
-                                        if (isExpanded) {
-                                            toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`;
-                                            toggleExamplesBtn.dataset.expanded = "false";
-                                        } else {
-                                            toggleExamplesBtn.textContent = "Ẩn bớt ví dụ";
-                                            toggleExamplesBtn.dataset.expanded = "true";
-                                        }
-                                    };
+                                    toggleExamplesBtn.onclick = (e) => { e.stopPropagation(); const isExpanded = toggleExamplesBtn.dataset.expanded === "true"; const exampleItems = examplesListDiv.querySelectorAll('.example-item-on-card'); exampleItems.forEach((item, itemIdx) => { if (itemIdx >= maxVisibleExamples) { item.classList.toggle('hidden', isExpanded); } }); if (isExpanded) { toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`; toggleExamplesBtn.dataset.expanded = "false"; } else { toggleExamplesBtn.textContent = "Ẩn bớt ví dụ"; toggleExamplesBtn.dataset.expanded = "true"; } };
                                     examplesContainer.appendChild(toggleExamplesBtn);
                                 }
                                 meaningBlockDiv.appendChild(examplesContainer);
@@ -1476,7 +1492,7 @@
 
             function setupEventListeners() {
                 hamburgerMenuBtn.addEventListener('click', openSidebar); closeSidebarBtn.addEventListener('click', closeSidebar); sidebarOverlay.addEventListener('click', closeSidebar);
-                cardSourceSelect.addEventListener('change', (e)=>{currentDatasetSource=e.target.value;practiceTypeSelect.value="off";practiceType="off";if(currentDatasetSource!=='user')userDeckSelect.value='all_user_cards';loadVocabularyData(categorySelect.value);updateSidebarFilterVisibility();});
+                cardSourceSelect.addEventListener('change', (e)=>{currentDatasetSource=e.target.value;practiceTypeSelect.value="off";practiceType="off";if(currentDatasetSource!=='user')userDeckSelect.value='all_user_cards';loadVocabularyData(categorySelect.value);updateSidebarFilterVisibility(); updateMainHeaderTitle();});
                 userDeckSelect.addEventListener('change', ()=>{appState.lastSelectedDeckId=userDeckSelect.value;applyAllFilters(false);});
                 manageDecksBtn.addEventListener('click', ()=>{renderExistingDecksList();manageDecksModal.classList.remove('hidden','opacity-0');manageDecksModal.querySelector('.modal-content').classList.remove('scale-95');manageDecksModal.querySelector('.modal-content').classList.add('scale-100');newDeckNameInput.value='';newDeckNameInput.focus();});
                 closeDeckModalBtn.addEventListener('click', ()=>{manageDecksModal.classList.add('opacity-0');manageDecksModal.querySelector('.modal-content').classList.add('scale-95');setTimeout(()=>manageDecksModal.classList.add('hidden'),250);});
@@ -1486,7 +1502,7 @@
                 addEditCardForm.addEventListener('submit', (e)=>{e.preventDefault();handleSaveCard();});
 
                 practiceTypeSelect.addEventListener('change', (e)=>{clearLearningTimer();practiceType=e.target.value;const cat=categorySelect.value;const st=getCategoryState(currentDatasetSource,cat);searchInput.value='';if(cat==='phrasalVerbs'){st.tag='all';tagSelect.value='all';st.baseVerb='all';baseVerbSelect.value='all';}if(currentDatasetSource==='user'){st.deckId='all_user_cards';userDeckSelect.value='all_user_cards';}st.filterMarked='all_study';filterCardStatusSelect.value='all_study';st.currentIndex=0;applyAllFilters();closeSidebar();});
-                categorySelect.addEventListener('change', (e)=>{clearLearningTimer();const selCat=e.target.value;practiceTypeSelect.value="off";practiceType="off";searchInput.value='';loadVocabularyData(selCat);});
+                categorySelect.addEventListener('change', (e)=>{clearLearningTimer();const selCat=e.target.value;practiceTypeSelect.value="off";practiceType="off";searchInput.value='';loadVocabularyData(selCat); updateMainHeaderTitle();});
                 baseVerbSelect.addEventListener('change', ()=>applyAllFilters(false)); tagSelect.addEventListener('change', ()=>applyAllFilters(false));
                 searchInput.addEventListener('input', ()=>applyAllFilters(false)); filterCardStatusSelect.addEventListener('change', ()=>applyAllFilters(false));
                 flipBtn.addEventListener('click', ()=>{if(practiceType==="off"&&currentData.length>0)flashcardElement.classList.toggle('flipped');});
@@ -1497,7 +1513,8 @@
                         !e.target.closest('#edit-card-on-back-btn') &&
                         !e.target.closest('#delete-card-on-back-btn') &&
                         !e.target.closest('.toggle-examples-btn') &&
-                        !e.target.closest('.copy-example-btn')
+                        !e.target.closest('.copy-example-btn') &&
+                        !e.target.closest('#empty-state-add-card-btn-on-card') // Ignore click on this button
                         ) {
                         flashcardElement.classList.toggle('flipped');
                     }
