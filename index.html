@@ -136,6 +136,21 @@
             color: #bae6fd;
             margin-right: 0.25rem;
         }
+        .toggle-examples-btn { /* Styling for the "Show More/Less" button */
+            font-size: 0.75rem; /* text-xs */
+            color: #bae6fd; /* sky-200 */
+            text-decoration: underline;
+            margin-top: 0.25rem; /* mt-1 */
+            margin-left: 0.75rem; /* ml-3 to align with examples if they have ml-3 */
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+        .toggle-examples-btn:hover {
+            color: #e0f2fe; /* sky-100 */
+        }
+
 
     </style>
     <script>
@@ -228,7 +243,8 @@
                     <button id="speaker-btn" title="Phát âm Từ" class="absolute bottom-4 left-4 text-2xl p-2 hover:text-green-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20"><i class="fas fa-volume-up"></i></button>
                 </div>
                 <div class="card-back absolute w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-xl p-5 flex flex-col overflow-hidden">
-                    <div class="card-scrollable-content w-full h-full overflow-y-auto text-left p-3 pb-16 space-y-2 pt-10"> <div id="meaning-display-container" class="space-y-4"></div>
+                    <div class="card-scrollable-content w-full h-full overflow-y-auto text-left p-3 pb-16 space-y-2 pt-10">
+                        <div id="meaning-display-container" class="space-y-4"></div>
                         <div id="notes-section" class="notes-section border-t border-blue-400 pt-3 mt-4">
                             <p id="notes-display" class="text-sm text-indigo-100"></p>
                         </div>
@@ -414,7 +430,9 @@
                         "phrasalVerb": "Look up", "baseVerb": "look", "pronunciation": "/lʊk ʌp/", "category": "phrasalVerbs",
                         "meanings": [
                             { "id": generateUniqueId('m'), "text": "Tra cứu (thông tin)", "notes": "Trong từ điển, danh bạ...", "examples": [
-                                { "id": generateUniqueId('ex'), "eng": "I need to look up this word in the dictionary.", "vie": "Tôi cần tra từ này trong từ điển." }
+                                { "id": generateUniqueId('ex'), "eng": "I need to look up this word in the dictionary.", "vie": "Tôi cần tra từ này trong từ điển." },
+                                { "id": generateUniqueId('ex'), "eng": "Another example for look up.", "vie": "Ví dụ khác cho look up." },
+                                { "id": generateUniqueId('ex'), "eng": "A third example for this meaning.", "vie": "Ví dụ thứ ba cho nghĩa này." }
                             ]}
                         ],
                         "tags": ["learning_information"], "generalNotes": "Một cụm động từ phổ biến."
@@ -438,7 +456,8 @@
                                 { "id": generateUniqueId('ex'), "eng": "We found a solution to the problem.", "vie": "Chúng tôi đã tìm ra giải pháp cho vấn đề." }
                             ]},
                             { "id": generateUniqueId('m'), "text": "Một chất lỏng trong đó một chất rắn đã được hòa tan (dung dịch).", "notes": "Trong hóa học.", "examples": [
-                                { "id": generateUniqueId('ex'), "eng": "A salt solution.", "vie": "Dung dịch muối." }
+                                { "id": generateUniqueId('ex'), "eng": "A salt solution.", "vie": "Dung dịch muối." },
+                                { "id": generateUniqueId('ex'), "eng": "This is a concentrated solution.", "vie": "Đây là một dung dịch đậm đặc." }
                             ]}
                         ],
                         "generalNotes": "Danh từ đếm được."
@@ -838,7 +857,7 @@
             function checkTypingAnswer(){if(currentData.length===0||!currentCorrectAnswerForPractice)return;currentAnswerChecked=true;feedbackMessage.classList.remove('hidden');typingInput.disabled=true;submitTypingAnswerBtn.disabled=true;const uA=typingInput.value.trim().toLowerCase();const cA=currentCorrectAnswerForPractice.trim().toLowerCase();const iC=uA===cA;if(iC){feedbackMessage.textContent='Đúng!';feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300';}else{feedbackMessage.textContent=`Sai! Đúng: ${currentCorrectAnswerForPractice}`;feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300';}flashcardElement.classList.remove('practice-mode-front-only');flashcardElement.classList.add('flipped');const i=currentData[currentIndex];const iCV=i.category;const id=getCardIdentifier(i,iCV);if(id)setCardStatus(iC?'learned':'learning');updateCardInfo();}
 
             // ========================================================================
-            // HÀM updateFlashcard ĐÃ ĐƯỢC CẬP NHẬT VỚI SVG ICONS
+            // HÀM updateFlashcard ĐÃ ĐƯỢC CẬP NHẬT VỚI SVG ICONS VÀ CHỨC NĂNG THU GỌN/MỞ RỘNG VÍ DỤ
             // ========================================================================
             function updateFlashcard() {
                 clearLearningTimer(); currentAnswerChecked = false;
@@ -963,12 +982,21 @@
                             }
 
                             if (mObj.examples && mObj.examples.length > 0) {
-                                const examplesForThisMeaningDiv = document.createElement('div');
-                                examplesForThisMeaningDiv.className = "ml-3 space-y-1.5 mt-3";
+                                const examplesContainer = document.createElement('div'); // Wrapper for examples and toggle button
+                                examplesContainer.className = "ml-3 mt-3"; // Indent and add top margin
 
-                                mObj.examples.forEach(ex => {
+                                const examplesListDiv = document.createElement('div');
+                                examplesListDiv.className = "space-y-1.5"; // Spacing between example items
+
+                                const maxVisibleExamples = 1;
+                                const totalExamples = mObj.examples.length;
+
+                                mObj.examples.forEach((ex, exIdx) => {
                                     const exD = document.createElement('div');
                                     exD.className="example-item-on-card";
+                                    if (exIdx >= maxVisibleExamples) {
+                                        exD.classList.add('hidden');
+                                    }
 
                                     const eP = document.createElement('p');
                                     eP.className="example-eng-on-card";
@@ -995,9 +1023,39 @@
                                         nP.textContent=`Ghi chú VD: ${ex.exampleNotes}`;
                                         exD.appendChild(nP);
                                     }
-                                    examplesForThisMeaningDiv.appendChild(exD);
+                                    examplesListDiv.appendChild(exD);
                                 });
-                                meaningBlockDiv.appendChild(examplesForThisMeaningDiv);
+                                examplesContainer.appendChild(examplesListDiv); // Add list of examples
+
+                                if (totalExamples > maxVisibleExamples) {
+                                    const toggleExamplesBtn = document.createElement('button');
+                                    toggleExamplesBtn.className = "toggle-examples-btn"; // Use the new CSS class
+                                    let hiddenCount = totalExamples - maxVisibleExamples;
+                                    toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`;
+                                    toggleExamplesBtn.dataset.expanded = "false";
+
+                                    toggleExamplesBtn.onclick = (e) => {
+                                        e.stopPropagation();
+                                        const isExpanded = toggleExamplesBtn.dataset.expanded === "true";
+                                        const exampleItems = examplesListDiv.querySelectorAll('.example-item-on-card');
+
+                                        exampleItems.forEach((item, itemIdx) => {
+                                            if (itemIdx >= maxVisibleExamples) {
+                                                item.classList.toggle('hidden', isExpanded);
+                                            }
+                                        });
+
+                                        if (isExpanded) {
+                                            toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`;
+                                            toggleExamplesBtn.dataset.expanded = "false";
+                                        } else {
+                                            toggleExamplesBtn.textContent = "Ẩn bớt ví dụ";
+                                            toggleExamplesBtn.dataset.expanded = "true";
+                                        }
+                                    };
+                                    examplesContainer.appendChild(toggleExamplesBtn); // Append button to the examples container
+                                }
+                                meaningBlockDiv.appendChild(examplesContainer); // Append the whole container to meaning block
                             }
                             meaningDisplayContainer.appendChild(meaningBlockDiv);
                         });
@@ -1049,7 +1107,8 @@
                         !e.target.closest('button#speaker-btn') &&
                         !e.target.closest('button#speaker-example-btn') &&
                         !e.target.closest('#edit-card-on-back-btn') &&
-                        !e.target.closest('#delete-card-on-back-btn')
+                        !e.target.closest('#delete-card-on-back-btn') &&
+                        !e.target.closest('.toggle-examples-btn') // Ignore clicks on toggle button
                         ) {
                         flashcardElement.classList.toggle('flipped');
                     }
