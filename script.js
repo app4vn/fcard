@@ -42,8 +42,30 @@ const loginErrorMessage = document.getElementById('login-error-message');
 const registerErrorMessage = document.getElementById('register-error-message');
 const toggleAuthModeBtn = document.getElementById('toggle-auth-mode-btn');
 
+// *** KHAI BÁO CÁC BIẾN DOM SẼ ĐƯỢC SỬ DỤNG TRONG saveAppState VÀ CÁC HÀM KHÁC Ở PHẠM VI MODULE ***
+let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDisplay, 
+    pronunciationDisplay, meaningDisplayContainer, notesDisplay, prevBtn, flipBtn, 
+    nextBtn, currentCardIndexDisplay, totalCardsDisplay, speakerBtn, speakerExampleBtn, 
+    tagFilterContainer, tagSelect, searchInput, baseVerbFilterContainer, baseVerbSelect, 
+    practiceTypeSelect, practiceArea, multipleChoiceOptionsContainer, feedbackMessage, 
+    filterCardStatusSelect, statusBtnNew, statusBtnLearning, statusBtnLearned, 
+    hamburgerMenuBtn, filterSidebar, closeSidebarBtn, sidebarOverlay, tagsDisplayFront, 
+    typingInputContainer, typingInput, submitTypingAnswerBtn, openAddCardModalBtn, 
+    addEditCardModal, closeModalBtn, addEditCardForm, modalTitle, cardIdInput, 
+    cardWordInput, cardPronunciationInput, cardGeneralNotesInput, meaningBlocksContainer, 
+    addAnotherMeaningBlockAtEndBtn, phrasalVerbSpecificFields, cardBaseVerbInput, 
+    cardTagsInput, cancelCardBtn, saveCardBtn, deckCreationHint, userDeckFilterContainer, 
+    userDeckSelect, manageDecksBtn, modalDeckAssignmentContainer, cardDeckAssignmentSelect, 
+    manageDecksModal, deckModalContent, closeDeckModalBtn, newDeckNameInput, 
+    addNewDeckBtn, existingDecksList, cardWordError, meaningBlocksGeneralError, 
+    manualInputModeBtn, jsonInputModeBtn, jsonInputArea, cardJsonInput, processJsonBtn, 
+    jsonImportErrorMessage, jsonImportSuccessMessage, jsonCardDeckAssignmentSelect, 
+    jsonDeckCreationHint, copyWebCardBtn, copyToDeckModal, closeCopyToDeckModalBtn, 
+    copyToDeckSelect, copyNewDeckNameContainer, copyNewDeckNameInput, copyNewDeckError, 
+    copyToDeckErrorMessage, copyToDeckSuccessMessage, cancelCopyToDeckBtn, confirmCopyToDeckBtn;
+// *** KẾT THÚC KHAI BÁO ***
 
-// *** DI CHUYỂN KHAI BÁO appState VÀ CÁC HÀM LIÊN QUAN RA NGOÀI DOMContentLoaded ***
+
 const defaultCategoryState = {
     searchTerm: '',
     baseVerb: 'all',
@@ -59,9 +81,9 @@ const defaultAppState = {
     lastSelectedDeckId: 'all_user_cards', 
     categoryStates: {}
 };
-let appState = JSON.parse(JSON.stringify(defaultAppState)); // Khởi tạo với bản sao sâu
+let appState = JSON.parse(JSON.stringify(defaultAppState)); 
 
-const appStateStorageKey = 'flashcardAppState_v4_firestore_sync_v2'; // Đổi key để tránh xung đột với dữ liệu cũ không tương thích
+const appStateStorageKey = 'flashcardAppState_v4_firestore_sync_v2'; 
 
 async function loadAppState() {
     console.log("Attempting to load AppState. Current user ID:", currentUserId);
@@ -71,33 +93,29 @@ async function loadAppState() {
             const docSnap = await getDoc(appStateRef);
             if (docSnap.exists()) {
                 const firestoreState = docSnap.data();
-                // Merge cẩn thận, đảm bảo categoryStates là một object
                 appState = { 
                     ...defaultAppState, 
                     ...firestoreState,
                     categoryStates: firestoreState.categoryStates ? { ...firestoreState.categoryStates } : {} 
                 };
-                // Đảm bảo mỗi categoryState có đủ các trường từ defaultCategoryState
                 Object.keys(appState.categoryStates).forEach(k => {
                     appState.categoryStates[k] = {
                         ...defaultCategoryState,
                         ...(appState.categoryStates[k] || {}),
-                        searchTerm: appState.categoryStates[k]?.searchTerm || '' // Đảm bảo searchTerm không undefined
+                        searchTerm: appState.categoryStates[k]?.searchTerm || '' 
                     };
                 });
                 console.log("AppState loaded from Firestore and merged with defaults:", JSON.parse(JSON.stringify(appState)));
-                localStorage.setItem(appStateStorageKey, JSON.stringify(appState)); // Đồng bộ xuống localStorage
+                localStorage.setItem(appStateStorageKey, JSON.stringify(appState)); 
                 return; 
             } else {
                 console.log("No AppState in Firestore for this user, trying localStorage or defaults.");
             }
         } catch (error) {
             console.error("Error loading appState from Firestore:", error);
-            // Tiếp tục thử localStorage hoặc default nếu Firestore lỗi
         }
     }
 
-    // Fallback to localStorage or defaults
     try {
         const s = localStorage.getItem(appStateStorageKey);
         if (s) {
@@ -117,7 +135,7 @@ async function loadAppState() {
                 };
             });
             console.log("AppState loaded from localStorage and merged with defaults:", JSON.parse(JSON.stringify(appState)));
-            if (currentUserId) { // Nếu có user, đồng bộ lên Firestore
+            if (currentUserId) { 
                 await saveAppStateToFirestore(); 
             }
         } else {
@@ -126,7 +144,6 @@ async function loadAppState() {
              if (currentUserId) {
                 await saveAppStateToFirestore();
             } else {
-                // Chỉ lưu vào localStorage nếu không có user và không có gì trong localStorage
                 localStorage.setItem(appStateStorageKey, JSON.stringify(appState));
             }
         }
@@ -148,7 +165,6 @@ async function saveAppStateToFirestore() {
 
     const appStateRef = doc(db, 'users', currentUserId, 'userSettings', 'appStateDoc');
     try {
-        // Tạo một bản sao sâu của appState để tránh các vấn đề với serverTimestamp nếu nó được dùng trực tiếp
         const stateToSave = JSON.parse(JSON.stringify(appState)); 
         await setDoc(appStateRef, stateToSave); 
         console.log("AppState saved to Firestore for user:", currentUserId);
@@ -158,21 +174,28 @@ async function saveAppStateToFirestore() {
 }
 
 async function saveAppState(){ 
-    const currentCategory = categorySelect.value;
-    const stateForCategory = getCategoryState(currentDatasetSource, currentCategory);
+    // *** ĐẢM BẢO CÁC BIẾN DOM ĐÃ ĐƯỢC GÁN TRƯỚC KHI TRUY CẬP .value ***
+    if (!categorySelect || !filterCardStatusSelect || !userDeckSelect || !baseVerbSelect || !tagSelect) {
+        console.warn("saveAppState: DOM elements for select not ready yet. Skipping save or using potentially old appState values.");
+        // Cần xử lý cẩn thận hơn ở đây, có thể không lưu nếu các element chưa sẵn sàng
+        // Hoặc đảm bảo appState được cập nhật từ các nguồn khác trước khi gọi saveAppState nếu DOM chưa sẵn sàng
+    } else {
+        const currentCategory = categorySelect.value; // Sẽ không lỗi nếu categorySelect đã được gán
+        const stateForCategory = getCategoryState(currentDatasetSource, currentCategory);
 
-    stateForCategory.currentIndex = window.currentIndex;
-    stateForCategory.filterMarked = filterCardStatusSelect.value;
-    if (currentDatasetSource === 'user') {
-        stateForCategory.deckId = userDeckSelect.value;
+        stateForCategory.currentIndex = window.currentIndex;
+        stateForCategory.filterMarked = filterCardStatusSelect.value;
+        if (currentDatasetSource === 'user') {
+            stateForCategory.deckId = userDeckSelect.value;
+        }
+        if (currentCategory === 'phrasalVerbs' || currentCategory === 'collocations') { 
+            stateForCategory.baseVerb = baseVerbSelect.value;
+            stateForCategory.tag = tagSelect.value;
+        }
+        appState.lastSelectedCategory = currentCategory;
+        appState.lastSelectedSource = currentDatasetSource;
+        appState.lastSelectedDeckId = (currentDatasetSource === 'user') ? userDeckSelect.value : 'all_user_cards';
     }
-    if (currentCategory === 'phrasalVerbs' || currentCategory === 'collocations') {
-        stateForCategory.baseVerb = baseVerbSelect.value;
-        stateForCategory.tag = tagSelect.value;
-    }
-    appState.lastSelectedCategory = currentCategory;
-    appState.lastSelectedSource = currentDatasetSource;
-    appState.lastSelectedDeckId = (currentDatasetSource === 'user') ? userDeckSelect.value : 'all_user_cards';
 
 
     try{
@@ -181,7 +204,7 @@ async function saveAppState(){
     }catch(e){
         console.error("Lỗi save appState vào localStorage:", e);
     }
-    if (window.authFunctions.getCurrentUserId()) { // Chỉ lưu vào Firestore nếu người dùng đã đăng nhập
+    if (window.authFunctions.getCurrentUserId()) { 
         await saveAppStateToFirestore();
     }
 }
@@ -189,19 +212,16 @@ async function saveAppState(){
 function getCategoryState(src, cat) {
     const key = `${src}_${cat}`;
     if (!appState.categoryStates[key]) {
-        // Nếu không tồn tại, tạo mới dựa trên defaultCategoryState
         appState.categoryStates[key] = JSON.parse(JSON.stringify(defaultCategoryState));
     } else {
-        // Đảm bảo tất cả các trường từ defaultCategoryState đều tồn tại
         appState.categoryStates[key] = {
             ...defaultCategoryState,
             ...appState.categoryStates[key],
-            searchTerm: appState.categoryStates[key].searchTerm || '' // Đảm bảo searchTerm không undefined
+            searchTerm: appState.categoryStates[key].searchTerm || '' 
         };
     }
     return appState.categoryStates[key];
 }
-// *** KẾT THÚC DI CHUYỂN ***
 
 
 function openAuthModal(mode = 'login') { 
@@ -425,96 +445,98 @@ window.authFunctions = {
 
 // Logic chính của ứng dụng
 document.addEventListener('DOMContentLoaded', async () => { 
-    const mainHeaderTitle = document.getElementById('main-header-title');
-    const cardSourceSelect = document.getElementById('card-source-select'); 
-    const categorySelect = document.getElementById('category');
-    const flashcardElement = document.getElementById('flashcard');
+    // *** GÁN GIÁ TRỊ CHO CÁC BIẾN DOM Ở ĐÂY ***
+    mainHeaderTitle = document.getElementById('main-header-title');
+    cardSourceSelect = document.getElementById('card-source-select'); 
+    categorySelect = document.getElementById('category');
+    flashcardElement = document.getElementById('flashcard');
     
-    const wordDisplay = document.getElementById('word-display'); 
-    const pronunciationDisplay = document.getElementById('pronunciation-display');
-    const meaningDisplayContainer = document.getElementById('meaning-display-container');
-    const notesDisplay = document.getElementById('notes-display');
-    const prevBtn = document.getElementById('prev-btn');
-    const flipBtn = document.getElementById('flip-btn');
-    const nextBtn = document.getElementById('next-btn');
-    const currentCardIndexDisplay = document.getElementById('current-card-index');
-    const totalCardsDisplay = document.getElementById('total-cards');
-    const speakerBtn = document.getElementById('speaker-btn');
-    const speakerExampleBtn = document.getElementById('speaker-example-btn');
-    const tagFilterContainer = document.getElementById('tag-filter-container');
-    const tagSelect = document.getElementById('tags');
-    const searchInput = document.getElementById('search-input');
-    const baseVerbFilterContainer = document.getElementById('base-verb-filter-container');
-    const baseVerbSelect = document.getElementById('base-verb-filter');
-    const practiceTypeSelect = document.getElementById('practice-type-select');
-    const practiceArea = document.getElementById('practice-area');
-    const multipleChoiceOptionsContainer = document.getElementById('multiple-choice-options');
-    const feedbackMessage = document.getElementById('feedback-message');
-    const filterCardStatusSelect = document.getElementById('filter-card-status');
-    const statusBtnNew = document.getElementById('btn-status-new');
-    const statusBtnLearning = document.getElementById('btn-status-learning');
-    const statusBtnLearned = document.getElementById('btn-status-learned');
-    const hamburgerMenuBtn = document.getElementById('hamburger-menu-btn');
-    const filterSidebar = document.getElementById('filter-sidebar');
-    const closeSidebarBtn = document.getElementById('close-sidebar-btn');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
-    const tagsDisplayFront = document.getElementById('tags-display-front');
-    const typingInputContainer = document.getElementById('typing-input-container');
-    const typingInput = document.getElementById('typing-input');
-    const submitTypingAnswerBtn = document.getElementById('submit-typing-answer-btn');
+    wordDisplay = document.getElementById('word-display'); 
+    pronunciationDisplay = document.getElementById('pronunciation-display');
+    meaningDisplayContainer = document.getElementById('meaning-display-container');
+    notesDisplay = document.getElementById('notes-display');
+    prevBtn = document.getElementById('prev-btn');
+    flipBtn = document.getElementById('flip-btn');
+    nextBtn = document.getElementById('next-btn');
+    currentCardIndexDisplay = document.getElementById('current-card-index');
+    totalCardsDisplay = document.getElementById('total-cards');
+    speakerBtn = document.getElementById('speaker-btn');
+    speakerExampleBtn = document.getElementById('speaker-example-btn');
+    tagFilterContainer = document.getElementById('tag-filter-container');
+    tagSelect = document.getElementById('tags');
+    searchInput = document.getElementById('search-input');
+    baseVerbFilterContainer = document.getElementById('base-verb-filter-container');
+    baseVerbSelect = document.getElementById('base-verb-filter');
+    practiceTypeSelect = document.getElementById('practice-type-select');
+    practiceArea = document.getElementById('practice-area');
+    multipleChoiceOptionsContainer = document.getElementById('multiple-choice-options');
+    feedbackMessage = document.getElementById('feedback-message');
+    filterCardStatusSelect = document.getElementById('filter-card-status');
+    statusBtnNew = document.getElementById('btn-status-new');
+    statusBtnLearning = document.getElementById('btn-status-learning');
+    statusBtnLearned = document.getElementById('btn-status-learned');
+    hamburgerMenuBtn = document.getElementById('hamburger-menu-btn');
+    filterSidebar = document.getElementById('filter-sidebar');
+    closeSidebarBtn = document.getElementById('close-sidebar-btn');
+    sidebarOverlay = document.getElementById('sidebar-overlay');
+    tagsDisplayFront = document.getElementById('tags-display-front');
+    typingInputContainer = document.getElementById('typing-input-container');
+    typingInput = document.getElementById('typing-input');
+    submitTypingAnswerBtn = document.getElementById('submit-typing-answer-btn');
 
-    const openAddCardModalBtn = document.getElementById('open-add-card-modal-btn'); 
-    const addEditCardModal = document.getElementById('add-edit-card-modal');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const addEditCardForm = document.getElementById('add-edit-card-form');
-    const modalTitle = document.getElementById('modal-title');
-    const cardIdInput = document.getElementById('card-id-input');
-    const cardWordInput = document.getElementById('card-word-input');
-    const cardPronunciationInput = document.getElementById('card-pronunciation-input');
-    const cardGeneralNotesInput = document.getElementById('card-general-notes-input');
-    const meaningBlocksContainer = document.getElementById('meaning-blocks-container');
-    const addAnotherMeaningBlockAtEndBtn = document.getElementById('add-another-meaning-block-at-end-btn');
-    const phrasalVerbSpecificFields = document.getElementById('phrasal-verb-specific-fields');
-    const cardBaseVerbInput = document.getElementById('card-base-verb-input');
-    const cardTagsInput = document.getElementById('card-tags-input');
-    const cancelCardBtn = document.getElementById('cancel-card-btn');
-    const saveCardBtn = document.getElementById('save-card-btn');
-    const deckCreationHint = document.getElementById('deck-creation-hint');
-    const userDeckFilterContainer = document.getElementById('user-deck-filter-container'); 
-    const userDeckSelect = document.getElementById('user-deck-select'); 
-    const manageDecksBtn = document.getElementById('manage-decks-btn'); 
-    const modalDeckAssignmentContainer = document.getElementById('modal-deck-assignment-container');
-    const cardDeckAssignmentSelect = document.getElementById('card-deck-assignment-select');
-    const manageDecksModal = document.getElementById('manage-decks-modal');
-    const deckModalContent = manageDecksModal.querySelector('.modal-content'); 
-    const closeDeckModalBtn = document.getElementById('close-deck-modal-btn');
-    const newDeckNameInput = document.getElementById('new-deck-name-input');
-    const addNewDeckBtn = document.getElementById('add-new-deck-btn');
-    const existingDecksList = document.getElementById('existing-decks-list');
-    const cardWordError = document.getElementById('card-word-error');
-    const meaningBlocksGeneralError = document.getElementById('meaning-blocks-general-error');
+    openAddCardModalBtn = document.getElementById('open-add-card-modal-btn'); 
+    addEditCardModal = document.getElementById('add-edit-card-modal');
+    closeModalBtn = document.getElementById('close-modal-btn');
+    addEditCardForm = document.getElementById('add-edit-card-form');
+    modalTitle = document.getElementById('modal-title');
+    cardIdInput = document.getElementById('card-id-input');
+    cardWordInput = document.getElementById('card-word-input');
+    cardPronunciationInput = document.getElementById('card-pronunciation-input');
+    cardGeneralNotesInput = document.getElementById('card-general-notes-input');
+    meaningBlocksContainer = document.getElementById('meaning-blocks-container');
+    addAnotherMeaningBlockAtEndBtn = document.getElementById('add-another-meaning-block-at-end-btn');
+    phrasalVerbSpecificFields = document.getElementById('phrasal-verb-specific-fields');
+    cardBaseVerbInput = document.getElementById('card-base-verb-input');
+    cardTagsInput = document.getElementById('card-tags-input');
+    cancelCardBtn = document.getElementById('cancel-card-btn');
+    saveCardBtn = document.getElementById('save-card-btn');
+    deckCreationHint = document.getElementById('deck-creation-hint');
+    userDeckFilterContainer = document.getElementById('user-deck-filter-container'); 
+    userDeckSelect = document.getElementById('user-deck-select'); 
+    manageDecksBtn = document.getElementById('manage-decks-btn'); 
+    modalDeckAssignmentContainer = document.getElementById('modal-deck-assignment-container');
+    cardDeckAssignmentSelect = document.getElementById('card-deck-assignment-select');
+    manageDecksModal = document.getElementById('manage-decks-modal');
+    deckModalContent = manageDecksModal.querySelector('.modal-content'); 
+    closeDeckModalBtn = document.getElementById('close-deck-modal-btn');
+    newDeckNameInput = document.getElementById('new-deck-name-input');
+    addNewDeckBtn = document.getElementById('add-new-deck-btn');
+    existingDecksList = document.getElementById('existing-decks-list');
+    cardWordError = document.getElementById('card-word-error');
+    meaningBlocksGeneralError = document.getElementById('meaning-blocks-general-error');
 
-    const manualInputModeBtn = document.getElementById('manual-input-mode-btn');
-    const jsonInputModeBtn = document.getElementById('json-input-mode-btn');
-    const jsonInputArea = document.getElementById('json-input-area');
-    const cardJsonInput = document.getElementById('card-json-input');
-    const processJsonBtn = document.getElementById('process-json-btn');
-    const jsonImportErrorMessage = document.getElementById('json-import-error-message');
-    const jsonImportSuccessMessage = document.getElementById('json-import-success-message');
-    const jsonCardDeckAssignmentSelect = document.getElementById('json-card-deck-assignment-select'); 
-    const jsonDeckCreationHint = document.getElementById('json-deck-creation-hint');
+    manualInputModeBtn = document.getElementById('manual-input-mode-btn');
+    jsonInputModeBtn = document.getElementById('json-input-mode-btn');
+    jsonInputArea = document.getElementById('json-input-area');
+    cardJsonInput = document.getElementById('card-json-input');
+    processJsonBtn = document.getElementById('process-json-btn');
+    jsonImportErrorMessage = document.getElementById('json-import-error-message');
+    jsonImportSuccessMessage = document.getElementById('json-import-success-message');
+    jsonCardDeckAssignmentSelect = document.getElementById('json-card-deck-assignment-select'); 
+    jsonDeckCreationHint = document.getElementById('json-deck-creation-hint');
 
-    const copyWebCardBtn = document.getElementById('copy-web-card-btn');
-    const copyToDeckModal = document.getElementById('copy-to-deck-modal');
-    const closeCopyToDeckModalBtn = document.getElementById('close-copy-to-deck-modal-btn');
-    const copyToDeckSelect = document.getElementById('copy-to-deck-select');
-    const copyNewDeckNameContainer = document.getElementById('copy-new-deck-name-container');
-    const copyNewDeckNameInput = document.getElementById('copy-new-deck-name-input');
-    const copyNewDeckError = document.getElementById('copy-new-deck-error');
-    const copyToDeckErrorMessage = document.getElementById('copy-to-deck-error-message');
-    const copyToDeckSuccessMessage = document.getElementById('copy-to-deck-success-message');
-    const cancelCopyToDeckBtn = document.getElementById('cancel-copy-to-deck-btn');
-    const confirmCopyToDeckBtn = document.getElementById('confirm-copy-to-deck-btn');
+    copyWebCardBtn = document.getElementById('copy-web-card-btn');
+    copyToDeckModal = document.getElementById('copy-to-deck-modal');
+    closeCopyToDeckModalBtn = document.getElementById('close-copy-to-deck-modal-btn');
+    copyToDeckSelect = document.getElementById('copy-to-deck-select');
+    copyNewDeckNameContainer = document.getElementById('copy-new-deck-name-container');
+    copyNewDeckNameInput = document.getElementById('copy-new-deck-name-input');
+    copyNewDeckError = document.getElementById('copy-new-deck-error');
+    copyToDeckErrorMessage = document.getElementById('copy-to-deck-error-message');
+    copyToDeckSuccessMessage = document.getElementById('copy-to-deck-success-message');
+    cancelCopyToDeckBtn = document.getElementById('cancel-copy-to-deck-btn');
+    confirmCopyToDeckBtn = document.getElementById('confirm-copy-to-deck-btn');
+    // *** KẾT THÚC GÁN GIÁ TRỊ ***
 
 
     let baseVerbSuggestions = [];
@@ -2359,10 +2381,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         async function setupInitialCategoryAndSource() { 
-            if (!window.authFunctions.getCurrentUserId()) { // Chỉ gọi loadAppState ở đây nếu user chưa đăng nhập
+            if (!window.authFunctions.getCurrentUserId()) { 
                 await loadAppState(); 
             }
-            // Nếu user đã đăng nhập, onAuthStateChanged sẽ gọi updateAuthUI, và updateAuthUI sẽ gọi loadAppState
 
             const urlParams = new URLSearchParams(window.location.search);
             const sourceFromUrl = urlParams.get('source');
