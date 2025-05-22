@@ -75,18 +75,17 @@ function closeAuthModal() {
     setTimeout(() => authModal.classList.add('hidden'), 250);
 }
 
-function updateAuthUI(user) {
+async function updateAuthUI(user) { // Chuyển thành async để await loadAppState
     const localCardSourceSelect = document.getElementById('card-source-select'); 
     const localWordDisplay = document.getElementById('word-display'); 
-    // const authActionButton = document.getElementById('auth-action-btn'); // Đã khai báo ở global
 
     if (user) {
         isUserAnonymous = user.isAnonymous; 
-        currentUserId = user.uid;
-        userEmailDisplay.textContent = user.email ? user.email : (user.isAnonymous ? "Khách" : "Người dùng");
-        // Class Tailwind đã xử lý việc ẩn hiện email trên mobile
-        // userEmailDisplay.classList.remove('hidden'); 
+        currentUserId = user.uid; // Cập nhật currentUserId trước khi gọi loadAppState
         
+        await loadAppState(); // Tải AppState từ Firestore hoặc localStorage
+
+        userEmailDisplay.textContent = user.email ? user.email : (user.isAnonymous ? "Khách" : "Người dùng");
         authActionButton.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
         authActionButton.classList.add('bg-red-500', 'hover:bg-red-600');
         authActionButton.innerHTML = `
@@ -100,7 +99,7 @@ function updateAuthUI(user) {
         }
 
         if (localCardSourceSelect && localCardSourceSelect.value === 'user') {
-            console.log("User logged in, source is 'user'. Reloading user data.");
+            console.log("User logged in, source is 'user'. Reloading user data after appState load.");
             if (window.currentData && window.currentData.length === 0 && localWordDisplay) { 
                localWordDisplay.classList.add('word-display-empty-state');
                localWordDisplay.innerHTML = `<p>Chào mừng ${user.email || 'bạn'}! Hãy bắt đầu tạo bộ thẻ của riêng mình.</p><button id="empty-state-add-card-btn-on-card" class="mt-2"><i class="fas fa-plus mr-2"></i>Tạo Thẻ Đầu Tiên</button>`;
@@ -110,23 +109,17 @@ function updateAuthUI(user) {
                    if (mainOpenBtn) await openAddEditModal('add'); 
                }
             }
-            // Gọi loadVocabularyData sau khi UI đã sẵn sàng và user đã được xác thực
             if (typeof window.loadVocabularyData === 'function' && document.getElementById('category')) {
-                 // Đảm bảo loadUserDecks được gọi trước nếu loadVocabularyData phụ thuộc vào userDecks
                 if (typeof loadUserDecks === 'function') {
-                    loadUserDecks().then(() => {
-                        window.loadVocabularyData(document.getElementById('category').value);
-                    });
-                } else {
-                     window.loadVocabularyData(document.getElementById('category').value);
+                    await loadUserDecks(); // Đảm bảo userDecks được tải
                 }
+                window.loadVocabularyData(document.getElementById('category').value);
             }
         }
 
     } else {
         isUserAnonymous = true; 
         currentUserId = null;
-        // userEmailDisplay.classList.add('hidden'); // Class Tailwind đã xử lý
         userEmailDisplay.textContent = '';
 
         authActionButton.classList.remove('bg-red-500', 'hover:bg-red-600');
@@ -137,6 +130,12 @@ function updateAuthUI(user) {
         `;
         authActionButton.title = "Đăng nhập";
         
+        // Reset appState về mặc định và xóa khỏi localStorage khi đăng xuất
+        appState = { ...defaultAppState }; // Sử dụng defaultAppState đã định nghĩa
+        localStorage.removeItem(appStateStorageKey);
+        console.log("User logged out. AppState reset and removed from localStorage.");
+
+
         if (typeof window.updateSidebarFilterVisibility === 'function') {
             window.updateSidebarFilterVisibility(); 
         }
@@ -244,34 +243,19 @@ function mapAuthErrorCodeToMessage(errorCode) {
     }
 }
 
-onAuthStateChanged(fbAuth, (user) => {
-    updateAuthUI(user); 
+onAuthStateChanged(fbAuth, async (user) => { // Chuyển thành async
+    await updateAuthUI(user); // Await updateAuthUI để đảm bảo appState được tải xong
+    // Logic còn lại của onAuthStateChanged (nếu có) có thể đặt ở đây
+    // Ví dụ, nếu bạn muốn làm gì đó sau khi appState đã được tải và UI đã cập nhật
     if (user) {
-        console.log("Người dùng đã đăng nhập/thay đổi:", user.uid, "Email:", user.email, "Anonymous:", user.isAnonymous);
-        const localCardSourceSelect = document.getElementById('card-source-select');
-        if (localCardSourceSelect && localCardSourceSelect.value === 'user') {
-            if (typeof window.loadVocabularyData === 'function' && document.getElementById('category')) {
-                // Đảm bảo loadUserDecks được gọi trước nếu loadVocabularyData phụ thuộc vào userDecks
-                if (typeof loadUserDecks === 'function') {
-                     loadUserDecks().then(() => {
-                        window.loadVocabularyData(document.getElementById('category').value);
-                    });
-                } else {
-                     window.loadVocabularyData(document.getElementById('category').value);
-                }
-            } else {
-                console.warn('loadVocabularyData is not defined globally or category element not found for onAuthStateChanged after login and source=user');
-            }
-        }
+        console.log("onAuthStateChanged: User is now fully processed, appState loaded.");
+        // Gọi lại loadVocabularyData ở đây nếu cần thiết và chắc chắn rằng appState đã đúng
+        // Tuy nhiên, updateAuthUI đã gọi loadVocabularyData rồi.
     } else {
-        console.log("Người dùng đã đăng xuất hoặc chưa đăng nhập.");
-        const localCardSourceSelect = document.getElementById('card-source-select');
-        if (localCardSourceSelect && localCardSourceSelect.value === 'user') {
-            if(window.currentData) window.currentData = []; 
-            if(window.hasOwnProperty('currentIndex')) window.currentIndex = 0;
-            if (typeof window.updateFlashcard === 'function') {
-                window.updateFlashcard(); 
-            }
+        console.log("onAuthStateChanged: User logged out, appState reset.");
+        // Có thể cần gọi loadVocabularyData cho trạng thái chưa đăng nhập nếu cần
+        if (typeof window.loadVocabularyData === 'function' && document.getElementById('category')) {
+            window.loadVocabularyData(document.getElementById('category').value);
         }
     }
 });
@@ -282,8 +266,8 @@ window.authFunctions = {
     getCurrentUserId: () => currentUserId
 };
 
-// Nội dung của khối <script type="module"> thứ hai (Logic chính của ứng dụng)
-document.addEventListener('DOMContentLoaded', () => { 
+// Logic chính của ứng dụng
+document.addEventListener('DOMContentLoaded', async () => { // Chuyển thành async
     const mainHeaderTitle = document.getElementById('main-header-title');
     const cardSourceSelect = document.getElementById('card-source-select'); 
     const categorySelect = document.getElementById('category');
@@ -388,11 +372,27 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentInputMode = 'manual'; 
     let currentAnswerChecked = false;
     let currentCorrectAnswerForPractice = '';
-    let appState = {
-        lastSelectedCategory: 'phrasalVerbs', lastSelectedSource: 'web',
-        lastSelectedDeckId: 'all_user_cards', categoryStates: {}
-    }; 
-    const appStateStorageKey = 'flashcardAppState_v4_nested_linked_ui_fixed_v2'; 
+    
+    // *** THAY ĐỔI: Định nghĩa trạng thái mặc định ***
+    const defaultCategoryState = {
+        searchTerm: '',
+        baseVerb: 'all',
+        tag: 'all',
+        filterMarked: 'all_study',
+        currentIndex: 0,
+        deckId: 'all_user_cards'
+    };
+
+    const defaultAppState = {
+        lastSelectedCategory: 'phrasalVerbs',
+        lastSelectedSource: 'web',
+        lastSelectedDeckId: 'all_user_cards', 
+        categoryStates: {}
+    };
+    let appState = { ...defaultAppState }; // Khởi tạo appState với giá trị mặc định
+    // *** KẾT THÚC THAY ĐỔI ***
+
+    const appStateStorageKey = 'flashcardAppState_v4_firestore_sync'; // Có thể đổi key nếu muốn reset localStorage cũ
 
     let userDecks = []; 
     let learningCardNextButtonTimer = null;
@@ -425,8 +425,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.loadVocabularyData = loadVocabularyData;
     window.updateFlashcard = updateFlashcard; 
 
-
-    loadAppState(); 
+    // *** THAY ĐỔI: Gọi loadAppState ở đây để thiết lập trạng thái ban đầu ***
+    // (onAuthStateChanged sẽ gọi lại nếu người dùng đăng nhập)
+    await loadAppState(); 
     setupInitialCategoryAndSource(); 
     setupEventListeners(); 
 
@@ -783,7 +784,6 @@ document.addEventListener('DOMContentLoaded', () => {
             deckText = " - Thẻ chưa có bộ";
         }
         const categoryText = categorySelect.options[categorySelect.selectedIndex].text;
-        // *** THAY ĐỔI: Bỏ "Flashcard - " ở đầu ***
         mainHeaderTitle.textContent = `${sourceText}${deckText} - ${categoryText}`;
     }
 
@@ -937,55 +937,107 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCardInfo();
     }
 
-
-    function loadAppState(){ 
-        const currentUserId = window.authFunctions.getCurrentUserId(); 
-        console.warn("loadAppState: Cần load từ Firestore cho user ID:", currentUserId); 
-        try{
-            const s=localStorage.getItem(appStateStorageKey);
-            if(s){
-                const p=JSON.parse(s);
-                appState.lastSelectedCategory=p.lastSelectedCategory||'phrasalVerbs';
-                appState.lastSelectedSource=p.lastSelectedSource||'web';
-                appState.lastSelectedDeckId=p.lastSelectedDeckId||'all_user_cards';
-                appState.categoryStates=p.categoryStates||{};
-                Object.keys(appState.categoryStates).forEach(k=>{if(appState.categoryStates[k])appState.categoryStates[k].searchTerm='';});
-            }else{
-                appState.lastSelectedCategory='phrasalVerbs';
-                appState.lastSelectedSource='web';
-                appState.lastSelectedDeckId='all_user_cards';
-                appState.categoryStates={};
+    // *** CẬP NHẬT: loadAppState và saveAppState ***
+    async function loadAppState() {
+        const currentUserId = window.authFunctions.getCurrentUserId();
+        if (currentUserId) {
+            const appStateRef = doc(db, 'users', currentUserId, 'userSettings', 'appStateDoc');
+            try {
+                const docSnap = await getDoc(appStateRef);
+                if (docSnap.exists()) {
+                    const firestoreState = docSnap.data();
+                    appState = { ...defaultAppState, ...firestoreState }; 
+                    // Đảm bảo categoryStates được khởi tạo đúng cách nếu nó không có trong firestoreState
+                    if (!appState.categoryStates) appState.categoryStates = {};
+                    Object.keys(appState.categoryStates).forEach(k => {
+                        appState.categoryStates[k] = {
+                            ...defaultCategoryState,
+                            ...(appState.categoryStates[k] || {}),
+                            searchTerm: appState.categoryStates[k]?.searchTerm || ''
+                        };
+                    });
+                    console.log("AppState loaded from Firestore:", appState);
+                    localStorage.setItem(appStateStorageKey, JSON.stringify(appState));
+                    return; 
+                } else {
+                    console.log("No AppState in Firestore for this user, trying localStorage or defaults.");
+                }
+            } catch (error) {
+                console.error("Error loading appState from Firestore:", error);
             }
-        }catch(e){
+        }
+
+        // Fallback to localStorage or defaults
+        try {
+            const s = localStorage.getItem(appStateStorageKey);
+            if (s) {
+                const p = JSON.parse(s);
+                appState = { 
+                    ...defaultAppState, 
+                    lastSelectedCategory: p.lastSelectedCategory || defaultAppState.lastSelectedCategory,
+                    lastSelectedSource: p.lastSelectedSource || defaultAppState.lastSelectedSource,
+                    lastSelectedDeckId: p.lastSelectedDeckId || defaultAppState.lastSelectedDeckId,
+                    categoryStates: p.categoryStates || {} 
+                };
+                Object.keys(appState.categoryStates).forEach(k => {
+                     appState.categoryStates[k] = {
+                        ...defaultCategoryState,
+                        ...(appState.categoryStates[k] || {}),
+                        searchTerm: appState.categoryStates[k]?.searchTerm || ''
+                    };
+                });
+                console.log("AppState loaded from localStorage:", appState);
+                if (currentUserId) { 
+                    await saveAppStateToFirestore(); 
+                }
+            } else {
+                console.log("No AppState in localStorage, using defaults.");
+                appState = JSON.parse(JSON.stringify(defaultAppState)); // Tạo bản sao sâu
+                 if (currentUserId) {
+                    await saveAppStateToFirestore();
+                } else {
+                    localStorage.setItem(appStateStorageKey, JSON.stringify(appState));
+                }
+            }
+        } catch (e) {
             console.error("Lỗi load appState từ localStorage:", e);
-            appState.lastSelectedCategory='phrasalVerbs';
-            appState.lastSelectedSource='web';
-            appState.lastSelectedDeckId='all_user_cards';
-            appState.categoryStates={};
+            appState = JSON.parse(JSON.stringify(defaultAppState)); 
+            if (currentUserId) {
+                await saveAppStateToFirestore();
+            }
         }
     }
-    function saveAppState(){ 
-        const currentUserId = window.authFunctions.getCurrentUserId(); 
-        console.warn("saveAppState: Cần save vào Firestore cho user ID:", currentUserId); 
+
+    async function saveAppStateToFirestore() {
+        const currentUserId = window.authFunctions.getCurrentUserId();
+        if (!currentUserId) return; 
+
+        const appStateRef = doc(db, 'users', currentUserId, 'userSettings', 'appStateDoc');
+        try {
+            const stateToSave = JSON.parse(JSON.stringify(appState)); 
+            await setDoc(appStateRef, stateToSave); // Dùng setDoc để ghi đè toàn bộ
+            console.log("AppState saved to Firestore.");
+        } catch (error) {
+            console.error("Error saving appState to Firestore:", error);
+            // Không nên alert ở đây vì nó có thể được gọi thường xuyên
+        }
+    }
+
+    async function saveAppState(){ 
+        // Logic cập nhật appState trong bộ nhớ đã được thực hiện ở các hàm gọi saveAppState
         try{
-            const cV=categorySelect.value;
-            const sFS=getCategoryState(currentDatasetSource,cV);
-            sFS.currentIndex=window.currentIndex;
-            sFS.filterMarked=filterCardStatusSelect.value;
-            if(currentDatasetSource==='user')sFS.deckId=userDeckSelect.value;
-            if(cV==='phrasalVerbs' || cV === 'collocations'){ 
-                sFS.baseVerb=baseVerbSelect.value;
-                sFS.tag=tagSelect.value;
-            }
-            appState.lastSelectedCategory=cV;
-            appState.lastSelectedSource=currentDatasetSource;
-            appState.lastSelectedDeckId=(currentDatasetSource==='user')?userDeckSelect.value:'all_user_cards';
             localStorage.setItem(appStateStorageKey,JSON.stringify(appState));
+            console.log("AppState saved to localStorage.");
         }catch(e){
             console.error("Lỗi save appState vào localStorage:", e);
         }
+        if (window.authFunctions.getCurrentUserId()) {
+            await saveAppStateToFirestore();
+        }
     }
-    function getCategoryState(src,cat){const k=`${src}_${cat}`;if(!appState.categoryStates[k]){appState.categoryStates[k]={searchTerm:'',baseVerb:'all',tag:'all',filterMarked:'all_study',currentIndex:0,deckId:'all_user_cards'};}else{if(appState.categoryStates[k].searchTerm===undefined)appState.categoryStates[k].searchTerm='';if(appState.categoryStates[k].deckId===undefined)appState.categoryStates[k].deckId='all_user_cards';}return appState.categoryStates[k];}
+    // *** KẾT THÚC CẬP NHẬT ***
+    
+    function getCategoryState(src,cat){const k=`${src}_${cat}`;if(!appState.categoryStates[k]){appState.categoryStates[k]={...defaultCategoryState};}else{appState.categoryStates[k]={...defaultCategoryState,...appState.categoryStates[k],searchTerm:appState.categoryStates[k].searchTerm||''};}return appState.categoryStates[k];}
     
     function getCardIdentifier(item){
         if(!item) return null; 
@@ -2275,6 +2327,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         async function setupInitialCategoryAndSource() { 
+            // Không gọi loadAppState ở đây nữa vì onAuthStateChanged sẽ xử lý
+            // Hoặc nếu muốn load trạng thái ban đầu cho người dùng chưa đăng nhập:
+            if (!window.authFunctions.getCurrentUserId()) {
+                await loadAppState(); 
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const sourceFromUrl = urlParams.get('source');
             currentDatasetSource = sourceFromUrl || appState.lastSelectedSource || 'web';
