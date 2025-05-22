@@ -68,8 +68,8 @@ let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDis
 let baseVerbSuggestions = [];
 let tagSuggestions = [];
 let currentDatasetSource = 'web'; 
-window.currentData = []; // Để các hàm global khác có thể truy cập nếu cần (cân nhắc bỏ window.)
-window.currentIndex = 0; // Để các hàm global khác có thể truy cập nếu cần (cân nhắc bỏ window.)
+window.currentData = []; 
+window.currentIndex = 0; 
 let currentWordSpansMeta = [];
 let activeMasterList = [];
 let practiceType = "off";
@@ -84,7 +84,10 @@ let currentExampleSpeechIndex = 0;
 let isSpeakingExampleQueue = false;
 let currentEditingCardId = null;
 let currentEditingDeckId = null; 
-// *** KẾT THÚC KHAI BÁO BIẾN TRẠNG THÁI ***
+
+// *** DI CHUYỂN tagDisplayNames RA NGOÀI DOMContentLoaded ***
+const tagDisplayNames = {"all": "Tất cả chủ đề", "actions_general": "Hành động chung", "actions_tasks": "Hành động & Nhiệm vụ", "movement_travel": "Di chuyển & Du lịch", "communication": "Giao tiếp", "relationships_social": "Quan hệ & Xã hội", "emotions_feelings": "Cảm xúc & Cảm giác", "problems_solutions": "Vấn đề & Giải pháp", "work_business": "Công việc & Kinh doanh", "learning_information": "Học tập & Thông tin", "daily_routine": "Thói quen hàng ngày", "health_wellbeing": "Sức khỏe & Tinh thần", "objects_possession": "Đồ vật & Sở hữu", "time_planning": "Thời gian & Kế hoạch", "money_finance": "Tiền bạc & Tài chính", "behavior_attitude": "Hành vi & Thái độ", "begin_end_change": "Bắt đầu, Kết thúc & Thay đổi", "food_drink": "Ăn uống", "home_living": "Nhà cửa & Đời sống", "rules_systems": "Quy tắc & Hệ thống", "effort_achievement": "Nỗ lực & Thành tựu", "safety_danger": "An toàn & Nguy hiểm", "technology": "Công nghệ", "nature": "Thiên nhiên & Thời tiết", "art_creation": "Nghệ thuật & Sáng tạo" };
+// *** KẾT THÚC DI CHUYỂN ***
 
 
 const defaultCategoryState = {
@@ -195,7 +198,6 @@ async function saveAppStateToFirestore() {
 }
 
 async function saveAppState(){ 
-    // Đảm bảo các biến DOM đã được gán giá trị trước khi sử dụng
     if (!categorySelect || !filterCardStatusSelect || !userDeckSelect || !baseVerbSelect || !tagSelect) {
         console.warn("saveAppState: DOM elements for select not ready yet. Skipping save or using potentially old appState values.");
     } else {
@@ -286,7 +288,7 @@ async function updateAuthUI(user) {
         await loadAppState(); 
 
         userEmailDisplay.textContent = user.email ? user.email : (user.isAnonymous ? "Khách" : "Người dùng");
-        userEmailDisplay.classList.remove('hidden'); // Sửa: Bỏ class hidden của Tailwind nếu userEmailDisplay đã được khai báo
+        userEmailDisplay.classList.remove('hidden'); 
         authActionButton.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
         authActionButton.classList.add('bg-red-500', 'hover:bg-red-600');
         authActionButton.innerHTML = `
@@ -321,7 +323,7 @@ async function updateAuthUI(user) {
     } else {
         isUserAnonymous = true; 
         currentUserId = null;
-        if(userEmailDisplay) userEmailDisplay.classList.add('hidden'); // Thêm kiểm tra null
+        if(userEmailDisplay) userEmailDisplay.classList.add('hidden'); 
         if(userEmailDisplay) userEmailDisplay.textContent = '';
 
         authActionButton.classList.remove('bg-red-500', 'hover:bg-red-600');
