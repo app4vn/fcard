@@ -783,7 +783,8 @@ document.addEventListener('DOMContentLoaded', () => {
             deckText = " - Thẻ chưa có bộ";
         }
         const categoryText = categorySelect.options[categorySelect.selectedIndex].text;
-        mainHeaderTitle.textContent = `Flashcard - ${sourceText}${deckText} - ${categoryText}`;
+        // *** THAY ĐỔI: Bỏ "Flashcard - " ở đầu ***
+        mainHeaderTitle.textContent = `${sourceText}${deckText} - ${categoryText}`;
     }
 
     async function openAddEditModal(mode = 'add', cardData = null) {
