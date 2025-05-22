@@ -42,7 +42,7 @@ const loginErrorMessage = document.getElementById('login-error-message');
 const registerErrorMessage = document.getElementById('register-error-message');
 const toggleAuthModeBtn = document.getElementById('toggle-auth-mode-btn');
 
-// *** KHAI BÁO CÁC BIẾN DOM SẼ ĐƯỢC SỬ DỤNG TRONG saveAppState VÀ CÁC HÀM KHÁC Ở PHẠM VI MODULE ***
+// *** KHAI BÁO CÁC BIẾN DOM SẼ ĐƯỢC SỬ DỤNG Ở PHẠM VI MODULE ***
 let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDisplay, 
     pronunciationDisplay, meaningDisplayContainer, notesDisplay, prevBtn, flipBtn, 
     nextBtn, currentCardIndexDisplay, totalCardsDisplay, speakerBtn, speakerExampleBtn, 
@@ -63,7 +63,28 @@ let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDis
     jsonDeckCreationHint, copyWebCardBtn, copyToDeckModal, closeCopyToDeckModalBtn, 
     copyToDeckSelect, copyNewDeckNameContainer, copyNewDeckNameInput, copyNewDeckError, 
     copyToDeckErrorMessage, copyToDeckSuccessMessage, cancelCopyToDeckBtn, confirmCopyToDeckBtn;
-// *** KẾT THÚC KHAI BÁO ***
+
+// *** KHAI BÁO CÁC BIẾN TRẠNG THÁI ỨNG DỤNG Ở PHẠM VI MODULE ***
+let baseVerbSuggestions = [];
+let tagSuggestions = [];
+let currentDatasetSource = 'web'; 
+window.currentData = []; // Để các hàm global khác có thể truy cập nếu cần (cân nhắc bỏ window.)
+window.currentIndex = 0; // Để các hàm global khác có thể truy cập nếu cần (cân nhắc bỏ window.)
+let currentWordSpansMeta = [];
+let activeMasterList = [];
+let practiceType = "off";
+let currentInputMode = 'manual'; 
+let currentAnswerChecked = false;
+let currentCorrectAnswerForPractice = '';
+let userDecks = []; 
+let learningCardNextButtonTimer = null;
+let learningCardCountdownInterval = null;
+let exampleSpeechQueue = [];
+let currentExampleSpeechIndex = 0;
+let isSpeakingExampleQueue = false;
+let currentEditingCardId = null;
+let currentEditingDeckId = null; 
+// *** KẾT THÚC KHAI BÁO BIẾN TRẠNG THÁI ***
 
 
 const defaultCategoryState = {
@@ -174,25 +195,23 @@ async function saveAppStateToFirestore() {
 }
 
 async function saveAppState(){ 
-    // *** ĐẢM BẢO CÁC BIẾN DOM ĐÃ ĐƯỢC GÁN TRƯỚC KHI TRUY CẬP .value ***
+    // Đảm bảo các biến DOM đã được gán giá trị trước khi sử dụng
     if (!categorySelect || !filterCardStatusSelect || !userDeckSelect || !baseVerbSelect || !tagSelect) {
         console.warn("saveAppState: DOM elements for select not ready yet. Skipping save or using potentially old appState values.");
-        // Cần xử lý cẩn thận hơn ở đây, có thể không lưu nếu các element chưa sẵn sàng
-        // Hoặc đảm bảo appState được cập nhật từ các nguồn khác trước khi gọi saveAppState nếu DOM chưa sẵn sàng
     } else {
-        const currentCategory = categorySelect.value; // Sẽ không lỗi nếu categorySelect đã được gán
-        const stateForCategory = getCategoryState(currentDatasetSource, currentCategory);
+        const currentCategoryValue = categorySelect.value; 
+        const stateForCategory = getCategoryState(currentDatasetSource, currentCategoryValue);
 
         stateForCategory.currentIndex = window.currentIndex;
         stateForCategory.filterMarked = filterCardStatusSelect.value;
         if (currentDatasetSource === 'user') {
             stateForCategory.deckId = userDeckSelect.value;
         }
-        if (currentCategory === 'phrasalVerbs' || currentCategory === 'collocations') { 
+        if (currentCategoryValue === 'phrasalVerbs' || currentCategoryValue === 'collocations') { 
             stateForCategory.baseVerb = baseVerbSelect.value;
             stateForCategory.tag = tagSelect.value;
         }
-        appState.lastSelectedCategory = currentCategory;
+        appState.lastSelectedCategory = currentCategoryValue;
         appState.lastSelectedSource = currentDatasetSource;
         appState.lastSelectedDeckId = (currentDatasetSource === 'user') ? userDeckSelect.value : 'all_user_cards';
     }
@@ -267,7 +286,7 @@ async function updateAuthUI(user) {
         await loadAppState(); 
 
         userEmailDisplay.textContent = user.email ? user.email : (user.isAnonymous ? "Khách" : "Người dùng");
-        userEmailDisplay.classList.remove('hidden');
+        userEmailDisplay.classList.remove('hidden'); // Sửa: Bỏ class hidden của Tailwind nếu userEmailDisplay đã được khai báo
         authActionButton.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
         authActionButton.classList.add('bg-red-500', 'hover:bg-red-600');
         authActionButton.innerHTML = `
@@ -302,8 +321,8 @@ async function updateAuthUI(user) {
     } else {
         isUserAnonymous = true; 
         currentUserId = null;
-        userEmailDisplay.classList.add('hidden');
-        userEmailDisplay.textContent = '';
+        if(userEmailDisplay) userEmailDisplay.classList.add('hidden'); // Thêm kiểm tra null
+        if(userEmailDisplay) userEmailDisplay.textContent = '';
 
         authActionButton.classList.remove('bg-red-500', 'hover:bg-red-600');
         authActionButton.classList.add('bg-indigo-500', 'hover:bg-indigo-600');
@@ -445,7 +464,6 @@ window.authFunctions = {
 
 // Logic chính của ứng dụng
 document.addEventListener('DOMContentLoaded', async () => { 
-    // *** GÁN GIÁ TRỊ CHO CÁC BIẾN DOM Ở ĐÂY ***
     mainHeaderTitle = document.getElementById('main-header-title');
     cardSourceSelect = document.getElementById('card-source-select'); 
     categorySelect = document.getElementById('category');
@@ -536,47 +554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     copyToDeckSuccessMessage = document.getElementById('copy-to-deck-success-message');
     cancelCopyToDeckBtn = document.getElementById('cancel-copy-to-deck-btn');
     confirmCopyToDeckBtn = document.getElementById('confirm-copy-to-deck-btn');
-    // *** KẾT THÚC GÁN GIÁ TRỊ ***
-
-
-    let baseVerbSuggestions = [];
-    let tagSuggestions = [];
-
-    let currentDatasetSource = 'web'; 
-    window.currentData = []; 
-    window.currentIndex = 0; 
-    let currentWordSpansMeta = [];
-    let activeMasterList = [];
-    let practiceType = "off";
-    let currentInputMode = 'manual'; 
-    let currentAnswerChecked = false;
-    let currentCorrectAnswerForPractice = '';
     
-    let userDecks = []; 
-    let learningCardNextButtonTimer = null;
-    let learningCardCountdownInterval = null;
-    let exampleSpeechQueue = [];
-    let currentExampleSpeechIndex = 0;
-    let isSpeakingExampleQueue = false;
-    let currentEditingCardId = null;
-    let currentEditingDeckId = null; 
-
-    const tagDisplayNames = {"all": "Tất cả chủ đề", "actions_general": "Hành động chung", "actions_tasks": "Hành động & Nhiệm vụ", "movement_travel": "Di chuyển & Du lịch", "communication": "Giao tiếp", "relationships_social": "Quan hệ & Xã hội", "emotions_feelings": "Cảm xúc & Cảm giác", "problems_solutions": "Vấn đề & Giải pháp", "work_business": "Công việc & Kinh doanh", "learning_information": "Học tập & Thông tin", "daily_routine": "Thói quen hàng ngày", "health_wellbeing": "Sức khỏe & Tinh thần", "objects_possession": "Đồ vật & Sở hữu", "time_planning": "Thời gian & Kế hoạch", "money_finance": "Tiền bạc & Tài chính", "behavior_attitude": "Hành vi & Thái độ", "begin_end_change": "Bắt đầu, Kết thúc & Thay đổi", "food_drink": "Ăn uống", "home_living": "Nhà cửa & Đời sống", "rules_systems": "Quy tắc & Hệ thống", "effort_achievement": "Nỗ lực & Thành tựu", "safety_danger": "An toàn & Nguy hiểm", "technology": "Công nghệ", "nature": "Thiên nhiên & Thời tiết", "art_creation": "Nghệ thuật & Sáng tạo" };
-    
-    const sampleData = { 
-        "phrasalVerbs": [
-            { "phrasalVerb": "Look up", "baseVerb": "look", "category": "phrasalVerbs", "pronunciation": "/lʊk ʌp/", "meanings": [ { "id": "m_pv_sample_1_1", "text": "Tra cứu (thông tin)", "notes": "Trong từ điển, danh bạ...", "examples": [ { "id": "ex_pv_sample_1_1_1", "eng": "I need to look up this word in the dictionary.", "vie": "Tôi cần tra từ này trong từ điển." }, { "id": "ex_pv_sample_1_1_2", "eng": "Can you look up the train times for me?", "vie": "Bạn có thể tra giờ tàu cho tôi được không?" } ]}], "tags": ["learning_information", "actions_tasks"], "generalNotes": "Một cụm động từ phổ biến." },
-            { "phrasalVerb": "Give up", "baseVerb": "give", "category": "phrasalVerbs", "pronunciation": "/ɡɪv ʌp/", "meanings": [ { "id": "m_pv_sample_2_1", "text": "Từ bỏ", "notes": "Ngừng cố gắng làm gì đó.", "examples": [ { "id": "ex_pv_sample_2_1_1", "eng": "Don't give up on your dreams.", "vie": "Đừng từ bỏ ước mơ của bạn." }, { "id": "ex_pv_sample_2_1_2", "eng": "He gave up smoking last year.", "vie": "Anh ấy đã bỏ hút thuốc vào năm ngoái." } ]}], "tags": ["effort_achievement", "health_wellbeing"], "generalNotes": "" },
-        ],
-        "nouns": [ { "word": "Solution", "category": "nouns", "pronunciation": "/səˈluːʃən/", "meanings": [ { "id": "m_noun_sample_1_1", "text": "Giải pháp cho một vấn đề."}], "generalNotes": "Danh từ đếm được." } ],
-        "verbs": [ { "word": "Set", "category": "verbs", "pronunciation": "/set/", "meanings": [ { "id": "m_verb_sample_1_1", "text": "Đặt, để một cái gì đó ở một vị trí cụ thể."}], "generalNotes": "Một động từ có nhiều nghĩa." } ],
-        "adjectives": [ { "word": "Happy", "category": "adjectives", "pronunciation": "/ˈhæpi/", "meanings": [ { "id": "m_adj_sample_1_1", "text": "Cảm thấy hoặc thể hiện sự vui vẻ, hài lòng."}], "generalNotes": "" } ],
-        "collocations": [
-            { "collocation": "take a break", "baseVerb": "take", "category": "collocations", "pronunciation": "/teɪk ə breɪk/", "meanings": [ { "id": "m_col_sample_1_1", "text": "Nghỉ giải lao, nghỉ ngơi một lát", "notes": "Thường dùng trong công việc hoặc học tập", "examples": [ { "id": "ex_col_sample_1_1_1", "eng": "Let's take a break for 10 minutes.", "vie": "Chúng ta hãy nghỉ giải lao 10 phút." }, { "id": "ex_col_sample_1_1_2", "eng": "She's been working all day, she needs to take a break.", "vie": "Cô ấy đã làm việc cả ngày, cô ấy cần nghỉ ngơi." } ]}], "tags": ["daily_routine", "work_business"], "generalNotes": "Một collocation phổ biến với động từ 'take'." },
-            { "collocation": "make an effort", "baseVerb": "make", "category": "collocations", "pronunciation": "/meɪk ən ˈefərt/", "meanings": [ { "id": "m_col_sample_2_1", "text": "Nỗ lực, cố gắng", "examples": [ { "id": "ex_col_sample_2_1_1", "eng": "You need to make an effort to improve your grades.", "vie": "Bạn cần phải nỗ lực để cải thiện điểm số của mình." } ]}], "tags": ["effort_achievement"], "generalNotes": "" }
-        ]
-    };
-
     window.wordDisplay = wordDisplay; 
     window.updateSidebarFilterVisibility = updateSidebarFilterVisibility;
     window.updateMainHeaderTitle = updateMainHeaderTitle;
