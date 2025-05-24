@@ -52,10 +52,10 @@ body {
 #typing-input::placeholder {
     color: #9ca3af; /* Tailwind gray-400 */
 }
-.modal, #auth-modal {
+.modal, #auth-modal, #copy-to-deck-modal { 
     transition: opacity 0.25s ease;
 }
-.modal-content, #auth-modal-content {
+.modal-content, #auth-modal-content, #copy-to-deck-modal .modal-content { 
     transition: transform 0.25s ease;
 }
 .editing-deck-input {
@@ -98,7 +98,7 @@ body {
 .copy-example-btn { background: none; border: none; padding: 0.25rem; margin-left: 0.5rem; cursor: pointer; color: #bae6fd; transition: color 0.15s ease-in-out; }
 .copy-example-btn:hover { color: #e0f2fe; }
 .copy-example-btn svg { width: 16px; height: 16px; }
-.form-error-message, #auth-error-message, #json-import-error-message { 
+.form-error-message, #auth-error-message, #json-import-error-message, #copy-new-deck-error, #copy-to-deck-error-message { 
     color: #ef4444; 
     font-size: 0.75rem; 
     margin-top: 0.25rem;
@@ -170,4 +170,167 @@ body {
 }
 .input-mode-toggle-btn:not(.active):hover {
     background-color: #c7d2fe; /* indigo-200 */
+}
+
+/* CSS cho Bottom Sheet */
+#bottom-sheet-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+#bottom-sheet.active {
+    transform: translateY(0);
+}
+#bottom-sheet-content button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.75rem 1rem; 
+    text-align: left;
+    border-radius: 0.375rem; 
+    transition: background-color 0.15s ease-in-out;
+}
+#bottom-sheet-content button:hover {
+    background-color: #f3f4f6; 
+}
+.dark #bottom-sheet-content button:hover {
+    background-color: #374151; 
+}
+#bottom-sheet-content button i {
+    width: 1.25rem; 
+    margin-right: 0.75rem; 
+    text-align: center;
+}
+
+/* CSS cho Toast Notification */
+#srs-feedback-toast {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s; 
+}
+#srs-feedback-toast.show {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.5s ease-in-out, visibility 0s linear 0s;
+}
+
+.srs-btn {
+    white-space: nowrap; 
+}
+
+.additional-action-btn {
+    display: flex;
+    flex-direction: column; 
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.25rem; 
+    border-radius: 0.375rem; 
+    transition: background-color 0.15s ease-in-out;
+    font-size: 0.7rem; 
+    line-height: 1; 
+    min-height: 50px; 
+}
+.additional-action-btn i {
+    margin-bottom: 0.125rem; 
+    font-size: 1rem; 
+}
+.additional-action-btn span {
+}
+
+#bottom-sheet-content .srs-info-item {
+    padding: 0.25rem 0;
+    font-size: 0.875rem; 
+}
+#bottom-sheet-content .srs-info-item strong {
+    font-weight: 600; 
+    color: #4b5563; 
+}
+.dark #bottom-sheet-content .srs-info-item strong {
+    color: #d1d5db; 
+}
+
+#bottom-sheet-notes-textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db; 
+    border-radius: 0.375rem; 
+    min-height: 80px; 
+    resize: vertical; 
+    margin-bottom: 0.5rem;
+}
+.dark #bottom-sheet-notes-textarea {
+    background-color: #4b5563; 
+    border-color: #6b7280; 
+    color: #e5e7eb; 
+}
+
+/* *** CẬP NHẬT CSS CHO BOTTOM SHEET VIDEO MODE VÀ NOTES MODE *** */
+#bottom-sheet.bottom-sheet-video-mode {
+    height: 75vh; /* Đặt chiều cao khoảng 75% viewport height, ví dụ 75vh */
+    max-height: 75vh; /* Giới hạn chiều cao tối đa */
+    padding: 0.5rem; /* Giữ một chút padding cho toàn bộ sheet */
+}
+#bottom-sheet.bottom-sheet-notes-mode { 
+    height: 60vh; /* Chiều cao cho chế độ ghi chú, có thể điều chỉnh */
+    max-height: 70vh; 
+    padding: 0.5rem; 
+}
+
+
+#bottom-sheet.bottom-sheet-video-mode #bottom-sheet-title,
+#bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-title {
+    margin-bottom: 0.5rem; 
+    padding-bottom: 0.5rem; 
+    flex-shrink: 0; /* Ngăn header co lại khi nội dung lớn */
+}
+
+#bottom-sheet.bottom-sheet-video-mode #bottom-sheet-content,
+#bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-content {
+    flex-grow: 1; 
+    display: flex; 
+    flex-direction: column; 
+    padding: 0; 
+    overflow: hidden; /* Quan trọng: Ngăn scrollbar không mong muốn ở đây */
+}
+
+/* Riêng cho video */
+#bottom-sheet.bottom-sheet-video-mode #bottom-sheet-content .video-iframe-container {
+    width: 100%;
+    /* aspect-ratio: 16 / 9;  Tạm thời bỏ để JS kiểm soát chiều cao */
+    background-color: #000; 
+    margin: auto 0; 
+    display: flex; 
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1; /* Cho phép container này lớn lên */
+    overflow: hidden; /* Đảm bảo iframe không tràn ra ngoài */
+    position: relative; /* Để iframe có thể định vị tuyệt đối bên trong */
+}
+
+#bottom-sheet.bottom-sheet-video-mode #bottom-sheet-content .video-iframe-container iframe {
+    /* JS sẽ đặt width và height cho iframe để duy trì aspect ratio */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%; 
+    border: none; 
+}
+
+/* Riêng cho notes */
+#bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-content {
+    padding: 0.5rem; 
+    overflow-y: auto; /* Cho phép cuộn nếu nội dung ghi chú dài */
+}
+
+#bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-notes-textarea {
+    flex-grow: 1; 
+    min-height: 150px; /* Tăng chiều cao tối thiểu cho textarea */
+    /* Đảm bảo textarea không gây scroll cho #bottom-sheet-content */
+    max-height: calc(100% - 4rem); /* Trừ đi chiều cao của nút Lưu (ước lượng) */
+}
+/* *** KẾT THÚC CẬP NHẬT CSS *** */
+
+#notes-display {
+    white-space: pre-wrap; 
+    word-break: break-word; 
 }
