@@ -17,12 +17,12 @@ import * as FirestoreService from './firestoreService.js';
 import { initializeSrsModule, processSrsRatingWrapper } from './srs.js';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBcBpsCGt-eWyAvtNaqxG0QncqzYDJwG70", // Replace with your API key
-  authDomain: "fcard-84890.firebaseapp.com", // Replace with your authDomain
-  projectId: "fcard-84890", // Replace with your projectId
-  storageBucket: "fcard-84890.appspot.com", // Replace with your storageBucket
-  messagingSenderId: "195942452341", // Replace with your messagingSenderId
-  appId: "1:195942452341:web:b995a99ae0d1fbb47a7c3c" // Replace with your appId
+  apiKey: "AIzaSyBcBpsCGt-eWyAvtNaqxG0QncqzYDJwG70", 
+  authDomain: "fcard-84890.firebaseapp.com", 
+  projectId: "fcard-84890", 
+  storageBucket: "fcard-84890.appspot.com", 
+  messagingSenderId: "195942452341", 
+  appId: "1:195942452341:web:b995a99ae0d1fbb47a7c3c" 
 };
 
 // Initialize Firebase
@@ -85,10 +85,17 @@ let currentEditingDeckId = null;
 let isSingleCardPracticeMode = false;
 let originalCurrentData = [];
 let originalCurrentIndex = 0;
+let currentYouglishWidget = null; 
+let isYouglishApiReady = false;   
 
-// Youglish specific state variables
-let isYouglishApiReady = false;
-let bottomSheetYouglishWidget = null;
+window.onYouglishAPIReady = function() {
+    console.log("Youglish API is ready.");
+    isYouglishApiReady = true;
+    if (typeof window.processPendingYouglishWidget === 'function') {
+        window.processPendingYouglishWidget();
+        window.processPendingYouglishWidget = null; 
+    }
+};
 
 
 const tagDisplayNames = {"all": "Tất cả chủ đề", "actions_general": "Hành động chung", "actions_tasks": "Hành động & Nhiệm vụ", "movement_travel": "Di chuyển & Du lịch", "communication": "Giao tiếp", "relationships_social": "Quan hệ & Xã hội", "emotions_feelings": "Cảm xúc & Cảm giác", "problems_solutions": "Vấn đề & Giải pháp", "work_business": "Công việc & Kinh doanh", "learning_information": "Học tập & Thông tin", "daily_routine": "Thói quen hàng ngày", "health_wellbeing": "Sức khỏe & Tinh thần", "objects_possession": "Đồ vật & Sở hữu", "time_planning": "Thời gian & Kế hoạch", "money_finance": "Tiền bạc & Tài chính", "behavior_attitude": "Hành vi & Thái độ", "begin_end_change": "Bắt đầu, Kết thúc & Thay đổi", "food_drink": "Ăn uống", "home_living": "Nhà cửa & Đời sống", "rules_systems": "Quy tắc & Hệ thống", "effort_achievement": "Nỗ lực & Thành tựu", "safety_danger": "An toàn & Nguy hiểm", "technology": "Công nghệ", "nature": "Thiên nhiên & Thời tiết", "art_creation": "Nghệ thuật & Sáng tạo" };
@@ -290,128 +297,21 @@ function showToast(message, duration = 3000, type = 'info') {
     if (!srsFeedbackToastEl) return;
 
     srsFeedbackToastEl.textContent = message;
-    srsFeedbackToastEl.classList.remove('bg-slate-700', 'bg-red-600', 'bg-green-600', 'opacity-0', 'hidden', 'dark:bg-slate-600', 'dark:bg-red-500', 'dark:bg-green-500'); 
+    srsFeedbackToastEl.classList.remove('bg-slate-700', 'bg-red-600', 'bg-green-600', 'opacity-0', 'hidden'); 
     srsFeedbackToastEl.classList.add('show'); 
 
     if (type === 'error') {
-        srsFeedbackToastEl.classList.add('bg-red-600', 'dark:bg-red-500');
+        srsFeedbackToastEl.classList.add('bg-red-600');
     } else if (type === 'success') {
-        srsFeedbackToastEl.classList.add('bg-green-600', 'dark:bg-green-500');
+        srsFeedbackToastEl.classList.add('bg-green-600');
     } else {
-        srsFeedbackToastEl.classList.add('bg-slate-700', 'dark:bg-slate-600'); 
+        srsFeedbackToastEl.classList.add('bg-slate-700'); 
     }
 
     clearTimeout(toastTimeout); 
     toastTimeout = setTimeout(() => {
         srsFeedbackToastEl.classList.remove('show');
     }, duration);
-}
-
-// Youglish API callback function (must be in global scope)
-window.onYouglishAPIReady = function() {
-    console.log("Youglish API is ready (Global Callback).");
-    isYouglishApiReady = true;
-    // Attempt to initialize widget if bottom sheet is open and tab is active
-    const activeBottomSheetWidgetElement = document.getElementById('bs-yg-widget');
-    const youglishTabContent = document.getElementById('youglish-tab-content');
-    if (activeBottomSheetWidgetElement && youglishTabContent && !youglishTabContent.classList.contains('hidden') && !bottomSheetYouglishWidget) {
-        console.log("API ready, attempting to initialize pending widget in bottom sheet.");
-        initializeYouglishWidgetInBottomSheet('bs-yg-widget');
-    }
-};
-
-async function initializeYouglishWidgetInBottomSheet(widgetId, initialTerm = null) {
-    if (typeof YG === 'undefined' || typeof YG.getWidget !== 'function') {
-        console.warn("YG object or YG.getWidget is not available yet.");
-        // Optionally show a message to the user if the API script hasn't loaded
-        const youglishTabContent = document.getElementById('youglish-tab-content');
-        if (youglishTabContent && !youglishTabContent.querySelector('.youglish-error-message')) {
-             const errorP = document.createElement('p');
-             errorP.className = 'text-orange-500 dark:text-orange-400 text-center p-2 youglish-error-message';
-             errorP.textContent = "Đang chờ Youglish API tải xong...";
-             youglishTabContent.appendChild(errorP);
-        }
-        return; // Exit if YG is not defined
-    }
-    try {
-        console.log(`Attempting to get Youglish widget with ID: ${widgetId}`);
-        const widgetInstance = YG.getWidget(widgetId); // This should get the widget instance
-        if (widgetInstance) {
-            bottomSheetYouglishWidget = widgetInstance;
-            bottomSheetYouglishWidget.addEventListener("onError", handleYouglishErrorInBottomSheet);
-            console.log("Youglish widget initialized in bottom sheet:", bottomSheetYouglishWidget);
-            
-            // If an initial term was passed (e.g., from the trigger click before widget was ready)
-            if (initialTerm && typeof bottomSheetYouglishWidget.fetch === 'function') {
-                 console.log(`Performing initial fetch for: ${initialTerm}`);
-                 bottomSheetYouglishWidget.fetch(initialTerm, "english", "us"); // Default to US English
-                 const parentDiv = document.getElementById('bs-yg-widget-parent');
-                 if (parentDiv) parentDiv.style.display = 'block';
-            }
-        } else {
-            console.error(`Failed to get Youglish widget with ID: ${widgetId}. YG.getWidget returned null.`);
-            handleYouglishErrorInBottomSheet({ code: 'YG_GETWIDGET_FAILED', message: "Không thể lấy widget Youglish. Hãy thử đóng và mở lại." });
-        }
-    } catch (error) {
-        console.error("Error initializing Youglish widget in bottom sheet:", error);
-        handleYouglishErrorInBottomSheet({ code: 'CUSTOM_INIT_EXCEPTION', message: "Lỗi không xác định khi khởi tạo Youglish." });
-    }
-}
-
-function handleYouglishErrorInBottomSheet(event) {
-    console.error("Youglish Widget Error in Bottom Sheet:", event);
-    const ygWidgetParent = document.getElementById('bs-yg-widget-parent');
-    if (ygWidgetParent) {
-        ygWidgetParent.style.display = 'none'; // Hide the widget container
-        // Optionally, destroy the widget if it exists and is causing persistent errors
-        if (bottomSheetYouglishWidget && typeof bottomSheetYouglishWidget.destroy === 'function') {
-            try {
-                bottomSheetYouglishWidget.destroy();
-            } catch (e) { console.warn("Error destroying widget on error:", e); }
-            bottomSheetYouglishWidget = null; // Reset for re-initialization
-        }
-    }
-
-    const youglishTabContent = document.getElementById('youglish-tab-content');
-    if (youglishTabContent) {
-        // Remove previous error messages
-        const existingError = youglishTabContent.querySelector('.youglish-error-message');
-        if (existingError) existingError.remove();
-
-        const errorP = document.createElement('p');
-        errorP.className = 'text-red-500 dark:text-red-400 text-center p-2 youglish-error-message';
-        let errorMessage = "Đã xảy ra lỗi với Youglish.";
-        if (event && event.code) {
-            switch(event.code){
-                case 'YG_GETWIDGET_FAILED':
-                    errorMessage = "Không thể khởi tạo widget Youglish. Vui lòng thử đóng và mở lại.";
-                    break;
-                case 'CUSTOM_INIT_EXCEPTION':
-                     errorMessage = "Lỗi không xác định khi khởi tạo Youglish. Vui lòng thử lại.";
-                     break;
-                case 'CUSTOM_FETCH_ERROR':
-                    errorMessage = event.message || "Lỗi khi tải video từ Youglish. Từ này có thể không có sẵn.";
-                    break;
-                // You can add more specific YG.Error cases if needed
-                // Example: case YG.Error.TIMEOUT: errorMessage = "Youglish timeout. Please try again."; break;
-                default:
-                    errorMessage = event.message || "Lỗi không xác định từ Youglish.";
-            }
-        } else if (event && event.message) {
-            errorMessage = event.message;
-        }
-        errorP.textContent = errorMessage;
-        
-        // Prepend error message so it's visible
-        const termTriggerBtn = document.getElementById('youglish-term-trigger');
-        if (termTriggerBtn && termTriggerBtn.parentNode === youglishTabContent) {
-            youglishTabContent.insertBefore(errorP, termTriggerBtn.nextSibling);
-        } else {
-             youglishTabContent.appendChild(errorP);
-        }
-    }
-    const termTriggerBtn = document.getElementById('youglish-term-trigger');
-    if (termTriggerBtn) termTriggerBtn.style.display = 'block'; // Ensure trigger is visible to try again
 }
 
 
@@ -573,8 +473,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function initializeClearButtonsForModal() { const inputsWithClear = [ cardWordInput, cardPronunciationInput, cardBaseVerbInput, cardTagsInput, cardGeneralNotesInput, cardVideoUrlInput ]; inputsWithClear.forEach(inputEl => { if (inputEl && inputEl.parentNode.classList.contains('relative')) { createClearButtonForInput(inputEl); } }); meaningBlocksContainer.querySelectorAll('.card-meaning-text-input, .card-meaning-notes-input').forEach(input => { if (input && input.parentNode.classList.contains('relative')) createClearButtonForInput(input); }); }
     function initializeClearButtonForSearch() { if (searchInput && searchInput.parentNode.classList.contains('relative')) { createClearButtonForInput(searchInput); } }
 
-    function createExampleEntryElement(exampleData = { id: generateUniqueId('ex'), eng: '', vie: '', exampleNotes: '' }) { const exampleEntryDiv = document.createElement('div'); exampleEntryDiv.className = 'example-entry space-y-1'; exampleEntryDiv.dataset.exampleId = exampleData.id || generateUniqueId('ex'); exampleEntryDiv.innerHTML = `<div class="flex justify-between items-center"><label class="block text-xs font-medium text-slate-500 dark:text-slate-400">Ví dụ Tiếng Anh</label><button type="button" class="remove-example-entry-btn text-red-400 hover:text-red-600 dark:hover:text-red-500 text-xs remove-entry-btn" title="Xóa ví dụ này"><i class="fas fa-times-circle"></i> Xóa</button></div><textarea rows="2" class="card-example-eng-input block w-full p-1.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Câu ví dụ (Tiếng Anh)">${exampleData.eng}</textarea><label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">Nghĩa ví dụ (Tiếng Việt - tùy chọn)</label><textarea rows="1" class="card-example-vie-input block w-full p-1.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Nghĩa tiếng Việt của ví dụ">${exampleData.vie}</textarea><label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">Ghi chú cho ví dụ này (tùy chọn)</label><textarea rows="1" class="card-example-notes-input block w-full p-1.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Ghi chú cho ví dụ">${exampleData.exampleNotes || ''}</textarea>`; exampleEntryDiv.querySelector('.remove-example-entry-btn').addEventListener('click', function() { this.closest('.example-entry').remove(); }); return exampleEntryDiv; }
-    function createMeaningBlockElement(meaningBlockData = { id: generateUniqueId('meaning'), text: '', notes: '', examples: [] }) { const meaningBlockDiv = document.createElement('div'); meaningBlockDiv.className = 'meaning-block'; meaningBlockDiv.dataset.meaningId = meaningBlockData.id || generateUniqueId('meaning'); meaningBlockDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Nghĩa (Tiếng Việt) <span class="text-red-500">*</span></label><button type="button" class="remove-meaning-block-btn text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm remove-entry-btn" title="Xóa khối nghĩa này"><i class="fas fa-trash-alt"></i> Xóa Khối</button></div><div class="relative"><input type="text" class="card-meaning-text-input block w-full p-2 pr-8 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" value="${meaningBlockData.text}" placeholder="Nội dung nghĩa..." required></div><p class="meaning-text-error form-error-message hidden"></p><label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mt-2">Ghi chú cho nghĩa này (tùy chọn)</label><div class="relative"><textarea rows="1" class="card-meaning-notes-input block w-full p-1.5 pr-8 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Ghi chú cho nghĩa...">${meaningBlockData.notes}</textarea></div><div class="mt-3 border-t dark:border-slate-700 pt-3"><h4 class="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Các ví dụ cho nghĩa này:</h4><div class="examples-for-meaning-container space-y-2"></div><button type="button" class="add-example-to-meaning-btn text-xs bg-sky-500 hover:bg-sky-600 text-white font-semibold py-1.5 px-3 rounded-md shadow-sm mt-3 w-full"><i class="fas fa-plus mr-1"></i>Thêm Ví dụ</button></div>`; const examplesContainerDiv = meaningBlockDiv.querySelector('.examples-for-meaning-container'); if (meaningBlockData.examples && meaningBlockData.examples.length > 0) { meaningBlockData.examples.forEach(ex => examplesContainerDiv.appendChild(createExampleEntryElement(ex))); } meaningBlockDiv.querySelector('.remove-meaning-block-btn').addEventListener('click', function() { this.closest('.meaning-block').remove(); updateRemoveMeaningBlockButtonsState(); }); meaningBlockDiv.querySelector('.add-example-to-meaning-btn').addEventListener('click', function() { this.closest('.meaning-block').querySelector('.examples-for-meaning-container').appendChild(createExampleEntryElement()); }); const meaningTextInput = meaningBlockDiv.querySelector('.card-meaning-text-input'); const meaningTextError = meaningBlockDiv.querySelector('.meaning-text-error'); meaningTextInput.addEventListener('input', () => clearFieldError(meaningTextInput, meaningTextError)); if (meaningTextInput.parentNode.classList.contains('relative')) { createClearButtonForInput(meaningTextInput); } const meaningNotesInput = meaningBlockDiv.querySelector('.card-meaning-notes-input'); if (meaningNotesInput.parentNode.classList.contains('relative')) { createClearButtonForInput(meaningNotesInput); } return meaningBlockDiv; }
+    function createExampleEntryElement(exampleData = { id: generateUniqueId('ex'), eng: '', vie: '', exampleNotes: '' }) { const exampleEntryDiv = document.createElement('div'); exampleEntryDiv.className = 'example-entry space-y-1'; exampleEntryDiv.dataset.exampleId = exampleData.id || generateUniqueId('ex'); exampleEntryDiv.innerHTML = `<div class="flex justify-between items-center"><label class="block text-xs font-medium text-slate-500">Ví dụ Tiếng Anh</label><button type="button" class="remove-example-entry-btn text-red-400 hover:text-red-600 text-xs remove-entry-btn" title="Xóa ví dụ này"><i class="fas fa-times-circle"></i> Xóa</button></div><textarea rows="2" class="card-example-eng-input block w-full p-1.5 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Câu ví dụ (Tiếng Anh)">${exampleData.eng}</textarea><label class="block text-xs font-medium text-slate-500 mt-1">Nghĩa ví dụ (Tiếng Việt - tùy chọn)</label><textarea rows="1" class="card-example-vie-input block w-full p-1.5 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Nghĩa tiếng Việt của ví dụ">${exampleData.vie}</textarea><label class="block text-xs font-medium text-slate-500 mt-1">Ghi chú cho ví dụ này (tùy chọn)</label><textarea rows="1" class="card-example-notes-input block w-full p-1.5 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Ghi chú cho ví dụ">${exampleData.exampleNotes || ''}</textarea>`; exampleEntryDiv.querySelector('.remove-example-entry-btn').addEventListener('click', function() { this.closest('.example-entry').remove(); }); return exampleEntryDiv; }
+    function createMeaningBlockElement(meaningBlockData = { id: generateUniqueId('meaning'), text: '', notes: '', examples: [] }) { const meaningBlockDiv = document.createElement('div'); meaningBlockDiv.className = 'meaning-block'; meaningBlockDiv.dataset.meaningId = meaningBlockData.id || generateUniqueId('meaning'); meaningBlockDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><label class="block text-sm font-medium text-slate-700">Nghĩa (Tiếng Việt) <span class="text-red-500">*</span></label><button type="button" class="remove-meaning-block-btn text-red-500 hover:text-red-700 text-sm remove-entry-btn" title="Xóa khối nghĩa này"><i class="fas fa-trash-alt"></i> Xóa Khối</button></div><div class="relative"><input type="text" class="card-meaning-text-input block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" value="${meaningBlockData.text}" placeholder="Nội dung nghĩa..." required></div><p class="meaning-text-error form-error-message hidden"></p><label class="block text-xs font-medium text-slate-500 mt-2">Ghi chú cho nghĩa này (tùy chọn)</label><div class="relative"><textarea rows="1" class="card-meaning-notes-input block w-full p-1.5 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Ghi chú cho nghĩa...">${meaningBlockData.notes}</textarea></div><div class="mt-3 border-t pt-3"><h4 class="text-xs font-semibold text-slate-600 mb-2">Các ví dụ cho nghĩa này:</h4><div class="examples-for-meaning-container space-y-2"></div><button type="button" class="add-example-to-meaning-btn text-xs bg-sky-500 hover:bg-sky-600 text-white font-semibold py-1.5 px-3 rounded-md shadow-sm mt-3 w-full"><i class="fas fa-plus mr-1"></i>Thêm Ví dụ</button></div>`; const examplesContainerDiv = meaningBlockDiv.querySelector('.examples-for-meaning-container'); if (meaningBlockData.examples && meaningBlockData.examples.length > 0) { meaningBlockData.examples.forEach(ex => examplesContainerDiv.appendChild(createExampleEntryElement(ex))); } meaningBlockDiv.querySelector('.remove-meaning-block-btn').addEventListener('click', function() { this.closest('.meaning-block').remove(); updateRemoveMeaningBlockButtonsState(); }); meaningBlockDiv.querySelector('.add-example-to-meaning-btn').addEventListener('click', function() { this.closest('.meaning-block').querySelector('.examples-for-meaning-container').appendChild(createExampleEntryElement()); }); const meaningTextInput = meaningBlockDiv.querySelector('.card-meaning-text-input'); const meaningTextError = meaningBlockDiv.querySelector('.meaning-text-error'); meaningTextInput.addEventListener('input', () => clearFieldError(meaningTextInput, meaningTextError)); if (meaningTextInput.parentNode.classList.contains('relative')) { createClearButtonForInput(meaningTextInput); } const meaningNotesInput = meaningBlockDiv.querySelector('.card-meaning-notes-input'); if (meaningNotesInput.parentNode.classList.contains('relative')) { createClearButtonForInput(meaningNotesInput); } return meaningBlockDiv; }
     function addMeaningBlockToEnd(meaningBlockData) { meaningBlocksContainer.appendChild(createMeaningBlockElement(meaningBlockData)); updateRemoveMeaningBlockButtonsState(); }
     function updateRemoveMeaningBlockButtonsState() { const meaningBlocks = meaningBlocksContainer.querySelectorAll('.meaning-block'); meaningBlocks.forEach(block => { const removeBtn = block.querySelector('.remove-meaning-block-btn'); if (removeBtn) removeBtn.disabled = meaningBlocks.length <= 1; }); }
 
@@ -676,22 +576,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderExistingDecksList() { 
         existingDecksList.innerHTML = ''; 
         if (!Array.isArray(userDecks) || !userDecks.length) { 
-            existingDecksList.innerHTML = '<p class="text-slate-500 dark:text-slate-400 italic">Chưa có bộ thẻ nào.</p>'; return; 
+            existingDecksList.innerHTML = '<p class="text-slate-500 italic">Chưa có bộ thẻ nào.</p>'; return; 
         } 
         userDecks.forEach(d=>{ 
             const itemDiv = document.createElement('div');
-            itemDiv.className='deck-item flex justify-between items-center p-2 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors';
+            itemDiv.className='deck-item flex justify-between items-center p-2 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors';
             itemDiv.dataset.deckId=d.id;
             
             const nameSpan = document.createElement('span');
-            nameSpan.className='deck-name-display text-slate-700 dark:text-slate-300';
+            nameSpan.className='deck-name-display text-slate-700';
             nameSpan.textContent=d.name;
             
             const actionsDiv = document.createElement('div');
             actionsDiv.className='deck-actions space-x-2';
             
             const editBtn = document.createElement('button');
-            editBtn.className='edit-deck-btn text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 transition-colors';
+            editBtn.className='edit-deck-btn text-blue-500 hover:text-blue-700 p-1 transition-colors';
             editBtn.title = "Sửa tên bộ thẻ";
             editBtn.innerHTML='<i class="fas fa-edit"></i>';
             editBtn.onclick=()=>startEditDeckName(d.id, itemDiv);
@@ -719,11 +619,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const input = document.createElement('input');
         input.type='text';
         input.value=originalName;
-        input.className='editing-deck-input block w-full p-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm'; 
+        input.className='editing-deck-input'; 
         
         const saveButton = document.createElement('button');
         saveButton.innerHTML='<i class="fas fa-check"></i>';
-        saveButton.className='text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 p-1 ml-1 transition-colors';
+        saveButton.className='text-green-500 hover:text-green-700 p-1 ml-1 transition-colors';
         saveButton.title = "Lưu tên";
         saveButton.onclick= async () => { 
             const success = await handleSaveDeckName(id, input.value, el);
@@ -732,7 +632,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const cancelButton = document.createElement('button');
         cancelButton.innerHTML='<i class="fas fa-times"></i>';
-        cancelButton.className='text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 ml-1 transition-colors';
+        cancelButton.className='text-red-500 hover:text-red-700 p-1 ml-1 transition-colors';
         cancelButton.title = "Hủy";
         cancelButton.onclick=()=>cancelEditDeckName(id, el, originalName);
         
@@ -1319,7 +1219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadVocabularyData (category) { 
         const userId = getCurrentUserId();
         clearLearningTimer();
-        wordDisplay.innerHTML = '<span class="text-slate-400 dark:text-slate-500 text-xl">Đang tải dữ liệu...</span>';
+        wordDisplay.innerHTML = '<span class="text-slate-400 text-xl">Đang tải dữ liệu...</span>';
         currentWordSpansMeta = []; pronunciationDisplay.textContent = ''; tagsDisplayFront.textContent = ''; meaningDisplayContainer.innerHTML = ''; notesDisplay.innerHTML = '';
         window.currentData = []; activeMasterList = []; speakerBtn.disabled = true; speakerExampleBtn.disabled = true;
 
@@ -1509,7 +1409,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     else if (cI.category === 'collocations') currentCorrectAnswerForPractice = cI.collocation || '';
                     else currentCorrectAnswerForPractice = cI.word || '';
                 } else { 
-                    if(typingInputContainer) typingInputContainer.innerHTML = '<p class="text-slate-500 dark:text-slate-400 italic">Không có thẻ để luyện tập.</p>'; 
+                    if(typingInputContainer) typingInputContainer.innerHTML = '<p class="text-slate-500 italic">Không có thẻ để luyện tập.</p>'; 
                 }
             } else { 
                 if(typingInputContainer) typingInputContainer.style.display = 'none'; 
@@ -1517,7 +1417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (window.currentData.length > 0 && window.currentData[window.currentIndex]) {
                     displayMultipleChoiceOptions(); 
                 } else {
-                     if(multipleChoiceOptionsContainer) multipleChoiceOptionsContainer.innerHTML = '<p class="text-slate-500 dark:text-slate-400 italic col-span-full">Không có thẻ để luyện tập.</p>';
+                     if(multipleChoiceOptionsContainer) multipleChoiceOptionsContainer.innerHTML = '<p class="text-slate-500 italic">Không có thẻ để luyện tập.</p>';
                 }
             }
             if (practiceType === 'word_quiz') {  
@@ -1574,7 +1474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         await openAddEditModal('add'); 
                     });
                 } else {
-                    wordDisplay.innerHTML = `<p class="text-xl text-slate-200 dark:text-slate-300">Không có thẻ nào phù hợp với bộ lọc hiện tại. Hãy thử điều chỉnh bộ lọc trong menu <i class="fas fa-bars"></i> nhé!</p>`;
+                    wordDisplay.innerHTML = `<p class="text-xl text-slate-200">Không có thẻ nào phù hợp với bộ lọc hiện tại. Hãy thử điều chỉnh bộ lọc trong menu <i class="fas fa-bars"></i> nhé!</p>`;
                 }
             }
             if(pronunciationDisplay) pronunciationDisplay.style.display = 'none';
@@ -1643,8 +1543,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (actionBtnMedia && item) actionBtnMedia.style.display = 'flex'; else if (actionBtnMedia) actionBtnMedia.style.display = 'none';
 
 
-            if (item.meanings && item.meanings.length > 0) { item.meanings.forEach((mObj, idx) => { const meaningBlockDiv = document.createElement('div'); meaningBlockDiv.className = `meaning-block-on-card ${idx > 0 ? "mt-4 pt-3 border-t border-blue-400 border-opacity-50 dark:border-blue-500" : (item.meanings.length > 1 ? "bg-black bg-opacity-10 dark:bg-opacity-20 p-3 rounded-lg" : "") }`; const meaningTextP = document.createElement('p'); meaningTextP.className = "meaning-text-on-card"; if (item.meanings.length > 1) { meaningTextP.textContent = `${idx + 1}. ${mObj.text}`; } else { meaningTextP.textContent = mObj.text; } meaningBlockDiv.appendChild(meaningTextP); if (mObj.notes) { const meaningNotesP = document.createElement('p'); meaningNotesP.className = "meaning-notes-on-card"; meaningNotesP.textContent = mObj.notes; meaningBlockDiv.appendChild(meaningNotesP); } if (mObj.examples && mObj.examples.length > 0) { const examplesContainer = document.createElement('div'); examplesContainer.className = "ml-3 mt-3"; const examplesListDiv = document.createElement('div'); examplesListDiv.className = "space-y-1.5"; examplesListDiv.dataset.meaningId = mObj.id; const maxVisibleExamples = 1; const totalExamples = mObj.examples.length; mObj.examples.forEach((ex, exIdx) => { const exD = document.createElement('div'); exD.className="example-item-on-card"; if (exIdx >= maxVisibleExamples) { exD.classList.add('hidden'); } const eP = document.createElement('p'); eP.className="example-eng-on-card"; const textSpan = document.createElement('span'); const enLabel = document.createElement('span'); enLabel.className = 'example-label'; enLabel.textContent = 'EN: '; textSpan.appendChild(enLabel); textSpan.appendChild(document.createTextNode(ex.eng)); eP.appendChild(textSpan); const copyBtn = document.createElement('button'); copyBtn.className = 'copy-example-btn'; copyBtn.title = 'Sao chép ví dụ'; const initialCopySvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" /></svg>`; const copiedSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`; copyBtn.innerHTML = initialCopySvg; copyBtn.onclick = (e) => { e.stopPropagation(); navigator.clipboard.writeText(ex.eng).then(() => { copyBtn.innerHTML = copiedSvg; setTimeout(() => { copyBtn.innerHTML = initialCopySvg; }, 1500); }).catch(err => { console.error('Không thể sao chép: ', err); }); }; eP.appendChild(copyBtn); exD.appendChild(eP); if(ex.vie){ const vP = document.createElement('p');vP.className="example-vie-on-card";const vnLabel = document.createElement('span');vnLabel.className = 'example-label';vnLabel.textContent = 'VN: ';vP.appendChild(vnLabel);vP.appendChild(document.createTextNode(`(${ex.vie})`));exD.appendChild(vP); } if(ex.exampleNotes){ const nP=document.createElement('p');nP.className="example-notes-on-card";nP.textContent=`Ghi chú VD: ${ex.exampleNotes}`;exD.appendChild(nP); } examplesListDiv.appendChild(exD); }); examplesContainer.appendChild(examplesListDiv); if (totalExamples > maxVisibleExamples) { const toggleExamplesBtn = document.createElement('button'); toggleExamplesBtn.className = "toggle-examples-btn"; let hiddenCount = totalExamples - maxVisibleExamples; toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`; toggleExamplesBtn.dataset.expanded = "false"; toggleExamplesBtn.onclick = (e) => { e.stopPropagation(); const isExpanded = toggleExamplesBtn.dataset.expanded === "true"; const exampleItems = examplesListDiv.querySelectorAll('.example-item-on-card'); exampleItems.forEach((item, itemIdx) => { if (itemIdx >= maxVisibleExamples) { item.classList.toggle('hidden', isExpanded); } }); if (isExpanded) { toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`; toggleExamplesBtn.dataset.expanded = "false"; } else { toggleExamplesBtn.textContent = "Ẩn bớt ví dụ"; toggleExamplesBtn.dataset.expanded = "true"; } }; examplesContainer.appendChild(toggleExamplesBtn); } meaningBlockDiv.appendChild(examplesContainer); } if(meaningDisplayContainer) meaningDisplayContainer.appendChild(meaningBlockDiv); }); } 
-                else if(meaningDisplayContainer) meaningDisplayContainer.innerHTML = '<p class="text-slate-400 dark:text-slate-500 italic">Chưa có nghĩa.</p>';
+            if (item.meanings && item.meanings.length > 0) { item.meanings.forEach((mObj, idx) => { const meaningBlockDiv = document.createElement('div'); meaningBlockDiv.className = `meaning-block-on-card ${idx > 0 ? "mt-4 pt-3 border-t border-blue-400 border-opacity-50" : (item.meanings.length > 1 ? "bg-black bg-opacity-10 p-3 rounded-lg" : "") }`; const meaningTextP = document.createElement('p'); meaningTextP.className = "meaning-text-on-card"; if (item.meanings.length > 1) { meaningTextP.textContent = `${idx + 1}. ${mObj.text}`; } else { meaningTextP.textContent = mObj.text; } meaningBlockDiv.appendChild(meaningTextP); if (mObj.notes) { const meaningNotesP = document.createElement('p'); meaningNotesP.className = "meaning-notes-on-card"; meaningNotesP.textContent = mObj.notes; meaningBlockDiv.appendChild(meaningNotesP); } if (mObj.examples && mObj.examples.length > 0) { const examplesContainer = document.createElement('div'); examplesContainer.className = "ml-3 mt-3"; const examplesListDiv = document.createElement('div'); examplesListDiv.className = "space-y-1.5"; examplesListDiv.dataset.meaningId = mObj.id; const maxVisibleExamples = 1; const totalExamples = mObj.examples.length; mObj.examples.forEach((ex, exIdx) => { const exD = document.createElement('div'); exD.className="example-item-on-card"; if (exIdx >= maxVisibleExamples) { exD.classList.add('hidden'); } const eP = document.createElement('p'); eP.className="example-eng-on-card"; const textSpan = document.createElement('span'); const enLabel = document.createElement('span'); enLabel.className = 'example-label'; enLabel.textContent = 'EN: '; textSpan.appendChild(enLabel); textSpan.appendChild(document.createTextNode(ex.eng)); eP.appendChild(textSpan); const copyBtn = document.createElement('button'); copyBtn.className = 'copy-example-btn'; copyBtn.title = 'Sao chép ví dụ'; const initialCopySvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" /></svg>`; const copiedSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`; copyBtn.innerHTML = initialCopySvg; copyBtn.onclick = (e) => { e.stopPropagation(); navigator.clipboard.writeText(ex.eng).then(() => { copyBtn.innerHTML = copiedSvg; setTimeout(() => { copyBtn.innerHTML = initialCopySvg; }, 1500); }).catch(err => { console.error('Không thể sao chép: ', err); }); }; eP.appendChild(copyBtn); exD.appendChild(eP); if(ex.vie){ const vP = document.createElement('p');vP.className="example-vie-on-card";const vnLabel = document.createElement('span');vnLabel.className = 'example-label';vnLabel.textContent = 'VN: ';vP.appendChild(vnLabel);vP.appendChild(document.createTextNode(`(${ex.vie})`));exD.appendChild(vP); } if(ex.exampleNotes){ const nP=document.createElement('p');nP.className="example-notes-on-card";nP.textContent=`Ghi chú VD: ${ex.exampleNotes}`;exD.appendChild(nP); } examplesListDiv.appendChild(exD); }); examplesContainer.appendChild(examplesListDiv); if (totalExamples > maxVisibleExamples) { const toggleExamplesBtn = document.createElement('button'); toggleExamplesBtn.className = "toggle-examples-btn"; let hiddenCount = totalExamples - maxVisibleExamples; toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`; toggleExamplesBtn.dataset.expanded = "false"; toggleExamplesBtn.onclick = (e) => { e.stopPropagation(); const isExpanded = toggleExamplesBtn.dataset.expanded === "true"; const exampleItems = examplesListDiv.querySelectorAll('.example-item-on-card'); exampleItems.forEach((item, itemIdx) => { if (itemIdx >= maxVisibleExamples) { item.classList.toggle('hidden', isExpanded); } }); if (isExpanded) { toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`; toggleExamplesBtn.dataset.expanded = "false"; } else { toggleExamplesBtn.textContent = "Ẩn bớt ví dụ"; toggleExamplesBtn.dataset.expanded = "true"; } }; examplesContainer.appendChild(toggleExamplesBtn); } meaningBlockDiv.appendChild(examplesContainer); } if(meaningDisplayContainer) meaningDisplayContainer.appendChild(meaningBlockDiv); }); } 
+                else if(meaningDisplayContainer) meaningDisplayContainer.innerHTML = '<p class="text-slate-400 italic">Chưa có nghĩa.</p>';
 
                 const notesSectionEl = document.getElementById('notes-section');
                 if (item.generalNotes) { if(notesDisplay) notesDisplay.innerHTML = `Ghi chú chung: ${item.generalNotes}`; if(notesSectionEl) notesSectionEl.style.display = 'block'; } 
@@ -1687,7 +1587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sourceCard = isSingleCardPracticeMode ? originalCurrentData[originalCurrentIndex] : window.currentData[window.currentIndex];
 
             if (!sourceCard) {
-                multipleChoiceOptionsContainer.innerHTML = '<p class="text-slate-500 dark:text-slate-400 italic col-span-full">Không có thẻ để luyện tập.</p>';
+                multipleChoiceOptionsContainer.innerHTML = '<p class="text-slate-500 italic col-span-full">Không có thẻ để luyện tập.</p>';
                 return;
             }
 
@@ -1767,11 +1667,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (isCorrect) {
                 buttonElement.classList.add('correct');
                 feedbackMessage.textContent = 'Chính xác!';
-                feedbackMessage.className = 'mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300 dark:bg-green-700 dark:text-green-100 dark:border-green-500';
+                feedbackMessage.className = 'mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300';
             } else {
                 buttonElement.classList.add('incorrect');
                 feedbackMessage.textContent = `Không đúng! Đáp án là: ${correctAnswer}`;
-                feedbackMessage.className = 'mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300 dark:bg-red-700 dark:text-red-100 dark:border-red-500';
+                feedbackMessage.className = 'mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300';
                 allChoiceButtons.forEach(btn => {
                     if (btn.textContent === correctAnswer) {
                         btn.classList.add('correct');
@@ -2070,6 +1970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        // *** SỬA LỖI: Đảm bảo tham số thứ ba là 'subView' ***
         function openBottomSheet(cardItem, viewType = 'default', subView = 'youglish') { 
             if (!cardItem || !bottomSheetContent || !bottomSheetTitle || !bottomSheetOverlay || !bottomSheet) return;
             
@@ -2114,21 +2015,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (!cardItem.isUserCard && loggedIn) {
                     const copyBtnEl = document.createElement('button');
-                    copyBtnEl.innerHTML = `<i class="fas fa-copy w-5 mr-3 text-sky-500 dark:text-sky-400"></i> Sao chép vào Thẻ của Tôi`;
+                    copyBtnEl.innerHTML = `<i class="fas fa-copy w-5 mr-3 text-sky-500"></i> Sao chép vào Thẻ của Tôi`;
                     copyBtnEl.onclick = () => { openCopyToDeckModal(); closeBottomSheet(); };
                     bottomSheetContent.appendChild(copyBtnEl);
                     hasActions = true;
                 }
                 if (cardItem.isUserCard && loggedIn) {
                     const editBtnEl = document.createElement('button');
-                    editBtnEl.innerHTML = `<i class="fas fa-edit w-5 mr-3 text-blue-500 dark:text-blue-400"></i> Sửa thẻ`;
+                    editBtnEl.innerHTML = `<i class="fas fa-edit w-5 mr-3 text-blue-500"></i> Sửa thẻ`;
                     editBtnEl.onclick = async () => { await openAddEditModal('edit', cardItem); closeBottomSheet(); };
                     bottomSheetContent.appendChild(editBtnEl);
                     hasActions = true;
                 }
                 if (loggedIn && (cardItem.isUserCard || (cardItem.nextReviewDate || (cardItem.repetitions && cardItem.repetitions > 0) ))) { 
                     const resetSrsBtn = document.createElement('button');
-                    resetSrsBtn.innerHTML = `<i class="fas fa-undo-alt w-5 mr-3 text-amber-500 dark:text-amber-400"></i> Đặt lại Tiến độ Học`;
+                    resetSrsBtn.innerHTML = `<i class="fas fa-undo-alt w-5 mr-3 text-amber-500"></i> Đặt lại Tiến độ Học`;
                     resetSrsBtn.onclick = async () => {
                         if (confirm("Bạn có chắc muốn đặt lại tiến độ học cho thẻ này? Thẻ sẽ được coi như mới học.")) {
                             const srsResetData = {
@@ -2155,8 +2056,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (loggedIn && (cardItem.isUserCard || (cardItem.nextReviewDate || (cardItem.repetitions && cardItem.repetitions > 0) ))) { 
                     const suspendBtn = document.createElement('button');
                     suspendBtn.innerHTML = cardItem.isSuspended 
-                        ? `<i class="fas fa-play-circle w-5 mr-3 text-green-500 dark:text-green-400"></i> Tiếp tục Ôn tập`
-                        : `<i class="fas fa-pause-circle w-5 mr-3 text-yellow-500 dark:text-yellow-400"></i> Tạm ngưng Ôn tập`;
+                        ? `<i class="fas fa-play-circle w-5 mr-3 text-green-500"></i> Tiếp tục Ôn tập`
+                        : `<i class="fas fa-pause-circle w-5 mr-3 text-yellow-500"></i> Tạm ngưng Ôn tập`;
                     suspendBtn.onclick = async () => {
                         const newSuspendedState = !cardItem.isSuspended;
                         const dataToUpdate = { isSuspended: newSuspendedState, updatedAt: serverTimestamp() };
@@ -2201,7 +2102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bottomSheetContent.appendChild(notesTextarea);
 
                 const saveNotesBtn = document.createElement('button');
-                saveNotesBtn.innerHTML = `<i class="fas fa-save w-5 mr-3 text-indigo-500 dark:text-indigo-400"></i> Lưu Nội dung`;
+                saveNotesBtn.innerHTML = `<i class="fas fa-save w-5 mr-3 text-indigo-500"></i> Lưu Nội dung`;
                 saveNotesBtn.classList.add('mt-2', 'bg-indigo-500', 'text-white', 'hover:bg-indigo-600', 'dark:bg-indigo-600', 'dark:hover:bg-indigo-700', 'py-2', 'px-4', 'rounded-md', 'w-full', 'flex', 'items-center', 'justify-center');
                 saveNotesBtn.onclick = async () => {
                     const newNotes = notesTextarea.value; 
@@ -2248,12 +2149,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bottomSheetContent.appendChild(youtubeContainer);
                 }
                 
-                setActiveMediaTab(subView, cardItem);
+                setActiveMediaTab(subView, cardItem); // *** SỬA Ở ĐÂY: Dùng subView thay vì initialSubView ***
                 hasActions = true; 
             } else if (viewType === 'practice_options') {
                  bottomSheetTitle.textContent = `Luyện tập: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
                  const practiceMeaningBtn = document.createElement('button');
-                 practiceMeaningBtn.innerHTML = `<i class="fas fa-list-alt w-5 mr-3 text-purple-500 dark:text-purple-400"></i> Luyện Nghĩa (Thẻ này)`;
+                 practiceMeaningBtn.innerHTML = `<i class="fas fa-list-alt w-5 mr-3 text-purple-500"></i> Luyện Nghĩa (Thẻ này)`;
                  practiceMeaningBtn.onclick = () => { 
                     startSingleCardPractice(cardItem, 'meaning_quiz');
                     closeBottomSheet(); 
@@ -2261,7 +2162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                  bottomSheetContent.appendChild(practiceMeaningBtn);
 
                  const practiceTypingBtn = document.createElement('button');
-                 practiceTypingBtn.innerHTML = `<i class="fas fa-keyboard w-5 mr-3 text-teal-500 dark:text-teal-400"></i> Luyện Gõ Từ (Thẻ này)`;
+                 practiceTypingBtn.innerHTML = `<i class="fas fa-keyboard w-5 mr-3 text-teal-500"></i> Luyện Gõ Từ (Thẻ này)`;
                  practiceTypingBtn.onclick = () => { 
                     startSingleCardPractice(cardItem, 'typing_practice');
                     closeBottomSheet(); 
@@ -2289,85 +2190,55 @@ document.addEventListener('DOMContentLoaded', async () => {
             const youglishContent = document.getElementById('youglish-tab-content');
             const youtubeContent = document.getElementById('youtube-tab-content');
             let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "Thẻ";
-        
-            // Clear previous content and destroy old widget if any
-            if (bottomSheetYouglishWidget && typeof bottomSheetYouglishWidget.destroy === 'function') {
-                try { bottomSheetYouglishWidget.destroy(); } catch (e) { console.warn("Error destroying Youglish widget on tab switch", e); }
-                bottomSheetYouglishWidget = null;
+
+            if (currentYouglishWidget) { 
+                try { currentYouglishWidget.destroy(); } catch(e) { console.warn("Error destroying Youglish widget", e); }
+                currentYouglishWidget = null;
             }
             if (youglishContent) youglishContent.innerHTML = ''; 
             if (youtubeContent) youtubeContent.innerHTML = '';
-        
+
             if (tabName === 'youglish') {
                 if (tabBtnYouglish) tabBtnYouglish.classList.add('active');
                 if (tabBtnYouTube) tabBtnYouTube.classList.remove('active');
                 if (youglishContent) youglishContent.classList.remove('hidden');
                 if (youtubeContent) youtubeContent.classList.add('hidden');
-        
-                // 1. Create the term trigger button
-                const termTriggerBtn = document.createElement('button');
-                termTriggerBtn.id = 'youglish-term-trigger';
-                termTriggerBtn.className = 'block w-full text-center p-3 mb-3 bg-sky-500 hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-700 text-white font-semibold rounded-md shadow-md transition duration-150 ease-in-out';
-                termTriggerBtn.innerHTML = `<i class="fas fa-play-circle mr-2"></i> Nghe "${cardTerm}" trên Youglish`;
-                if (youglishContent) youglishContent.appendChild(termTriggerBtn);
-        
-                // 2. Create the Youglish widget parent container (initially hidden)
-                const ygWidgetParent = document.createElement('div');
-                ygWidgetParent.id = 'bs-yg-widget-parent';
-                ygWidgetParent.className = 'youglish-widget-container mt-2 rounded-md overflow-hidden shadow-lg'; // Added shadow for better visibility
-                ygWidgetParent.style.display = 'none';
-                ygWidgetParent.style.width = '100%';
-                ygWidgetParent.style.height = 'auto'; 
-                ygWidgetParent.style.aspectRatio = '16 / 9'; 
-                ygWidgetParent.style.backgroundColor = '#000'; 
-        
-                // 3. Create the Youglish widget anchor tag
-                const ygWidgetAnchor = document.createElement('a');
-                ygWidgetAnchor.id = 'bs-yg-widget'; // Unique ID for the widget instance
-                ygWidgetAnchor.className = 'youglish-widget';
-                ygWidgetAnchor.setAttribute('data-components', 'player,captions,controls'); 
-                ygWidgetAnchor.setAttribute('data-width', '100%');
-                ygWidgetAnchor.setAttribute('data-height', '100%'); 
-                ygWidgetAnchor.setAttribute('data-delay-load', 'true'); // IMPORTANT
-                ygWidgetAnchor.href = 'https://youglish.com'; // Fallback link
-                ygWidgetParent.appendChild(ygWidgetAnchor);
-                if (youglishContent) youglishContent.appendChild(ygWidgetParent);
-        
-                // 4. Add event listener to the trigger button
-                termTriggerBtn.addEventListener('click', async () => {
-                    if (!isYouglishApiReady) {
-                        showToast("Youglish API chưa sẵn sàng. Vui lòng thử lại sau giây lát.", 3000, 'error');
-                        // Try to initialize again if API becomes ready later
-                        if (typeof YG !== 'undefined' && YG.getWidget) isYouglishApiReady = true; // Re-check
-                        return;
+
+                const widgetContainerId = 'youglish-widget-dynamic-' + Date.now(); 
+                const widgetDiv = document.createElement('div');
+                widgetDiv.id = widgetContainerId;
+                widgetDiv.className = 'video-iframe-container'; 
+                if (youglishContent) youglishContent.appendChild(widgetDiv);
+                
+                const createWidget = () => {
+                    if (document.getElementById(widgetContainerId)) { 
+                         currentYouglishWidget = new YG.Widget(widgetContainerId, {
+                            width: "100%", 
+                            components: 0, 
+                            events: {
+                                'onFetchDone': function(event) {
+                                    if (event.totalResults === 0 && document.getElementById(widgetContainerId)) {
+                                        document.getElementById(widgetContainerId).innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Không tìm thấy kết quả cho từ này trên Youglish.</p>';
+                                    }
+                                },
+                                'onError': function(event) {
+                                    if (document.getElementById(widgetContainerId)) {
+                                        document.getElementById(widgetContainerId).innerHTML = '<p class="text-red-500 dark:text-red-400 p-4 text-center">Lỗi tải Youglish widget.</p>';
+                                    }
+                                }
+                            }
+                        });
+                        currentYouglishWidget.fetch(cardTerm, "english", "us");
                     }
-        
-                    if (!bottomSheetYouglishWidget) {
-                        // Attempt to initialize the widget if it hasn't been already for this bottom sheet opening
-                        await initializeYouglishWidgetInBottomSheet('bs-yg-widget', cardTerm);
-                    }
-        
-                    if (bottomSheetYouglishWidget && typeof bottomSheetYouglishWidget.fetch === 'function') {
-                        try {
-                            console.log(`Fetching Youglish for: ${cardTerm}`);
-                            bottomSheetYouglishWidget.fetch(cardTerm, "english", "us"); 
-                            ygWidgetParent.style.display = 'block';
-                            // termTriggerBtn.style.display = 'none'; // Optionally hide the trigger
-                        } catch (error) {
-                            console.error("Error fetching Youglish term:", error);
-                            handleYouglishErrorInBottomSheet({ code: 'CUSTOM_FETCH_ERROR', message: "Lỗi khi tải video từ Youglish." });
-                        }
-                    } else {
-                         console.error("bottomSheetYouglishWidget is not initialized or fetch is not a function.");
-                         handleYouglishErrorInBottomSheet({ code: 'CUSTOM_INIT_ERROR', message: "Không thể khởi tạo Youglish. Vui lòng thử lại." });
-                    }
-                });
-        
-                // 5. Attempt to initialize the widget if API is ready and placeholder exists
-                if (isYouglishApiReady && document.getElementById('bs-yg-widget') && !bottomSheetYouglishWidget) {
-                    initializeYouglishWidgetInBottomSheet('bs-yg-widget');
+                };
+
+                if (isYouglishApiReady && typeof YG !== "undefined" && YG.Widget) {
+                    createWidget();
+                } else {
+                    console.log("Youglish API not ready, queuing widget creation for:", cardTerm);
+                    window.processPendingYouglishWidget = createWidget; 
                 }
-        
+
             } else if (tabName === 'youtube_custom') {
                 if (tabBtnYouTube) tabBtnYouTube.classList.add('active');
                 if (tabBtnYouglish) tabBtnYouglish.classList.remove('active');
@@ -2380,7 +2251,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const iframeContainer = document.createElement('div');
                         iframeContainer.className = 'video-iframe-container w-full'; 
                         const iframe = document.createElement('iframe');
-                        iframe.id = 'youtube-iframe'; // Add an ID for easier selection if needed
                         iframe.src = `https://www.youtube.com/embed/${videoId}`;
                         iframe.title = "YouTube video player";
                         iframe.frameBorder = "0";
@@ -2401,21 +2271,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         function closeBottomSheet() {
             if (!bottomSheet || !bottomSheetOverlay) return;
             
-            // Destroy Youglish widget if it exists
-            if (bottomSheetYouglishWidget && typeof bottomSheetYouglishWidget.destroy === 'function') { 
-                try {
-                    console.log("Destroying Youglish widget in bottom sheet.");
-                    bottomSheetYouglishWidget.destroy();
-                } catch(e) {
-                    console.warn("Error destroying Youglish widget during close", e);
-                }
-                bottomSheetYouglishWidget = null; // Reset the variable
-            }
-            // Clear the parent container of the Youglish widget
-            const ygWidgetParent = document.getElementById('bs-yg-widget-parent');
-            if (ygWidgetParent) {
-                ygWidgetParent.style.display = 'none';
-                ygWidgetParent.innerHTML = ''; // Remove the anchor tag to ensure it's re-created next time
+            if (currentYouglishWidget) { 
+                try { currentYouglishWidget.destroy(); } catch(e) { console.warn("Error destroying Youglish widget during close", e); }
+                currentYouglishWidget = null;
             }
 
             bottomSheet.classList.remove('active', 'bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode'); 
@@ -2426,7 +2284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => {
                 bottomSheet.classList.add('translate-y-full');
                 bottomSheetOverlay.classList.add('hidden');
-                const videoIframe = bottomSheetContent.querySelector('iframe#youtube-iframe'); // Specific to youtube
+                const videoIframe = bottomSheetContent.querySelector('iframe');
                 if (videoIframe) {
                     videoIframe.src = ''; 
                 }
@@ -2674,7 +2532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(btnSrsGood) btnSrsGood.addEventListener('click', () => processSrsRatingWrapper('good')); 
             if(btnSrsEasy) btnSrsEasy.addEventListener('click', () => processSrsRatingWrapper('easy'));
             
-            function checkTypingAnswer(){if(window.currentData.length===0||!currentCorrectAnswerForPractice)return;currentAnswerChecked=true;feedbackMessage.classList.remove('hidden');typingInput.disabled=true;submitTypingAnswerBtn.disabled=true;const uA=typingInput.value.trim().toLowerCase();const cA=currentCorrectAnswerForPractice.trim().toLowerCase();const iC=uA===cA;if(iC){feedbackMessage.textContent='Đúng!';feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300 dark:bg-green-700 dark:text-green-100 dark:border-green-500';}else{feedbackMessage.textContent=`Sai! Đáp án đúng: ${currentCorrectAnswerForPractice}`;feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300 dark:bg-red-700 dark:text-red-100 dark:border-red-500';}flashcardElement.classList.remove('practice-mode-front-only');flashcardElement.classList.add('flipped');const i=window.currentData[window.currentIndex];const iCV=i.category;const id=getCardIdentifier(i,iCV);if(id)processSrsRatingWrapper(iC?'easy':'again');updateCardInfo();} 
+            function checkTypingAnswer(){if(window.currentData.length===0||!currentCorrectAnswerForPractice)return;currentAnswerChecked=true;feedbackMessage.classList.remove('hidden');typingInput.disabled=true;submitTypingAnswerBtn.disabled=true;const uA=typingInput.value.trim().toLowerCase();const cA=currentCorrectAnswerForPractice.trim().toLowerCase();const iC=uA===cA;if(iC){feedbackMessage.textContent='Đúng!';feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300';}else{feedbackMessage.textContent=`Sai! Đáp án đúng: ${currentCorrectAnswerForPractice}`;feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300';}flashcardElement.classList.remove('practice-mode-front-only');flashcardElement.classList.add('flipped');const i=window.currentData[window.currentIndex];const iCV=i.category;const id=getCardIdentifier(i,iCV);if(id)processSrsRatingWrapper(iC?'easy':'again');updateCardInfo();} 
             
             if(submitTypingAnswerBtn) submitTypingAnswerBtn.addEventListener('click', checkTypingAnswer);
             if(typingInput) typingInput.addEventListener('keypress', (e)=>{if(e.key==='Enter'&&practiceType==='typing_practice'&&!submitTypingAnswerBtn.disabled)checkTypingAnswer();});
@@ -2703,4 +2561,5 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadVocabularyData(categorySelect.value); 
         }
         
-    }); // END DOMContentLoaded 
+    }); // END DOMContentLoaded
+    </script>
