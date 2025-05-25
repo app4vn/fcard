@@ -2426,15 +2426,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const iframeContainer = document.createElement('div');
                         iframeContainer.className = 'video-iframe-container w-full';
                         const iframe = document.createElement('iframe');
-                        iframe.src = `https://www.youtube.com/embed/$${videoId}`; // URL chuẩn
+                        iframe.id = 'youtube-iframe'; // Add an ID for easier selection if needed
+                        iframe.src = `https://www.youtube.com/embed/${videoId}`;
                         iframe.title = "YouTube video player";
                         iframe.frameBorder = "0";
                         iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
                         iframe.allowFullscreen = true;
                         iframeContainer.appendChild(iframe);
-                        youtubeContentDiv.appendChild(iframeContainer);
+                        if (youtubeContent) youtubeContent.appendChild(iframeContainer);
                     } else {
-                        youtubeContentDiv.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Link video YouTube không hợp lệ.</p>';
+                        if (youtubeContent) youtubeContent.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Link video YouTube không hợp lệ.</p>';
                     }
                 } else {
                      const searchButtonContainer = document.createElement('div');
