@@ -59,8 +59,8 @@ let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDis
     srsFeedbackToastEl,
     actionBtnNotes, actionBtnMedia, actionBtnPracticeCard,
     exitSingleCardPracticeBtn,
-    bottomSheetTabsContainer, /* tabBtnYouglish, */ tabBtnYouTube, // Loại bỏ tabBtnYouglish
-    flipIconFront, flipIconBack, cardFrontElement;
+    bottomSheetTabsContainer, tabBtnYouglish, tabBtnYouTube,
+    flipIconFront, flipIconBack, cardFrontElement; // Thêm cardFrontElement
 
 
 // KHAI BÁO CÁC BIẾN TRẠNG THÁI ỨNG DỤNG Ở PHẠM VI MODULE
@@ -69,7 +69,7 @@ let tagSuggestions = [];
 let currentDatasetSource = 'web';
 window.currentData = [];
 window.currentIndex = 0;
-let currentWordSpansMeta = [];
+let currentWordSpansMeta = []; // For main word highlighting
 let activeMasterList = [];
 let practiceType = "off";
 let currentInputMode = 'manual';
@@ -83,22 +83,26 @@ let currentEditingDeckId = null;
 let isSingleCardPracticeMode = false;
 let originalCurrentData = [];
 let originalCurrentIndex = 0;
-
-// Loại bỏ các biến liên quan đến Youglish
-// let currentYouglishWidget = null;
-// let isYouglishApiReady = false;
-// const YOUGLISH_WIDGET_ID = 'app-youglish-widget-instance'; 
+let currentYouglishWidget = null;
+let isYouglishApiReady = false;
 
 // Biến cho chức năng vuốt thẻ
 let touchStartX = 0;
 let touchEndX = 0;
 let touchStartY = 0;
 let touchEndY = 0;
-const swipeThreshold = 50; 
-const swipeMaxVerticalOffset = 75; 
+const swipeThreshold = 50; // Ngưỡng vuốt ngang (pixels)
+const swipeMaxVerticalOffset = 75; // Ngưỡng di chuyển dọc tối đa cho phép khi vuốt ngang
 
-// Loại bỏ window.onYouglishAPIReady
-// window.onYouglishAPIReady = function() { ... };
+
+window.onYouglishAPIReady = function() {
+    console.log("Youglish API is ready.");
+    isYouglishApiReady = true;
+    if (typeof window.processPendingYouglishWidget === 'function') {
+        window.processPendingYouglishWidget();
+        window.processPendingYouglishWidget = null;
+    }
+};
 
 
 const tagDisplayNames = {"all": "Tất cả chủ đề", "actions_general": "Hành động chung", "actions_tasks": "Hành động & Nhiệm vụ", "movement_travel": "Di chuyển & Du lịch", "communication": "Giao tiếp", "relationships_social": "Quan hệ & Xã hội", "emotions_feelings": "Cảm xúc & Cảm giác", "problems_solutions": "Vấn đề & Giải pháp", "work_business": "Công việc & Kinh doanh", "learning_information": "Học tập & Thông tin", "daily_routine": "Thói quen hàng ngày", "health_wellbeing": "Sức khỏe & Tinh thần", "objects_possession": "Đồ vật & Sở hữu", "time_planning": "Thời gian & Kế hoạch", "money_finance": "Tiền bạc & Tài chính", "behavior_attitude": "Hành vi & Thái độ", "begin_end_change": "Bắt đầu, Kết thúc & Thay đổi", "food_drink": "Ăn uống", "home_living": "Nhà cửa & Đời sống", "rules_systems": "Quy tắc & Hệ thống", "effort_achievement": "Nỗ lực & Thành tựu", "safety_danger": "An toàn & Nguy hiểm", "technology": "Công nghệ", "nature": "Thiên nhiên & Thời tiết", "art_creation": "Nghệ thuật & Sáng tạo" };
@@ -253,9 +257,9 @@ function getCategoryState(src, cat) {
 async function handleAuthStateChangedInApp(user) {
     const userIdFromAuth = getCurrentUserId();
 
-    await loadAppState(); 
+    await loadAppState(); // Tải trạng thái ứng dụng (có thể từ Firestore hoặc localStorage)
 
-    if (user) { 
+    if (user) { // Người dùng đã đăng nhập
         if(userEmailDisplayMain) userEmailDisplayMain.textContent = user.email ? user.email : (userIdFromAuth && !user.isAnonymous ? "Người dùng" : "Khách");
         if(userEmailDisplayMain) userEmailDisplayMain.classList.remove('hidden');
 
@@ -268,7 +272,7 @@ async function handleAuthStateChangedInApp(user) {
             `;
             authActionButtonMain.title = "Đăng xuất";
         }
-    } else { 
+    } else { // Người dùng đã đăng xuất hoặc chưa đăng nhập
         if(userEmailDisplayMain) userEmailDisplayMain.classList.add('hidden');
         if(userEmailDisplayMain) userEmailDisplayMain.textContent = '';
 
@@ -284,16 +288,19 @@ async function handleAuthStateChangedInApp(user) {
         console.log("User logged out or not logged in. AppState may have been reset or loaded from localStorage.");
     }
 
+    // Thiết lập category và source ban đầu, tải dữ liệu thẻ
+    // Quan trọng: Bước này sẽ gọi loadVocabularyData, rồi applyAllFilters, rồi updateFlashcard
     if (typeof setupInitialCategoryAndSource === 'function') {
         await setupInitialCategoryAndSource();
-        if (window.currentData && window.currentData.length > 0 && window.currentIndex < window.currentData.length && typeof window.updateFlashcard === 'function') {
-             console.log("Auth Change: Forcing UI update for current card index:", window.currentIndex);
-             window.updateFlashcard(); 
-        } else {
-            console.log("Auth Change: Conditions not met for forcing updateFlashcard. currentData length:", window.currentData?.length, "currentIndex:", window.currentIndex);
+        // *** START: Thêm dòng này để đảm bảo UI thẻ đầu tiên được cập nhật đúng sau khi đăng nhập ***
+        if (window.currentData && window.currentData.length > 0 && typeof window.updateFlashcard === 'function') {
+             console.log("Forcing updateFlashcard after setupInitialCategoryAndSource in handleAuthStateChangedInApp");
+             window.updateFlashcard(); // Gọi lại để đảm bảo UI của thẻ hiện tại được cập nhật đầy đủ
         }
+        // *** END: Thêm dòng này ***
     }
 
+    // Cập nhật các phần UI khác
     if (typeof updateSidebarFilterVisibility === 'function') {
         updateSidebarFilterVisibility();
     }
@@ -308,7 +315,7 @@ function showToast(message, duration = 3000, type = 'info') {
 
     srsFeedbackToastEl.textContent = message;
     srsFeedbackToastEl.classList.remove('bg-slate-700', 'bg-red-600', 'bg-green-600', 'opacity-0', 'hidden');
-    srsFeedbackToastEl.classList.add('show'); 
+    srsFeedbackToastEl.classList.add('show'); // Lớp 'show' để kích hoạt animation nếu có
 
     if (type === 'error') {
         srsFeedbackToastEl.classList.add('bg-red-600');
@@ -321,6 +328,7 @@ function showToast(message, duration = 3000, type = 'info') {
     clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => {
         srsFeedbackToastEl.classList.remove('show');
+        // Thêm class hidden sau khi animation hoàn tất nếu cần, hoặc để CSS xử lý visibility
     }, duration);
 }
 
@@ -331,7 +339,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     cardSourceSelect = document.getElementById('card-source-select');
     categorySelect = document.getElementById('category');
     flashcardElement = document.getElementById('flashcard');
-    cardFrontElement = flashcardElement.querySelector('.card-front'); 
+    cardFrontElement = flashcardElement.querySelector('.card-front'); // Lấy card-front
     wordDisplay = document.getElementById('word-display');
     pronunciationDisplay = document.getElementById('pronunciation-display');
     meaningDisplayContainer = document.getElementById('meaning-display-container');
@@ -342,7 +350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentCardIndexDisplay = document.getElementById('current-card-index');
     totalCardsDisplay = document.getElementById('total-cards');
     speakerBtn = document.getElementById('speaker-btn');
-    speakerExampleBtn = document.getElementById('speaker-example-btn'); 
+    speakerExampleBtn = document.getElementById('speaker-example-btn'); // Sẽ được ẩn đi
     tagFilterContainer = document.getElementById('tag-filter-container');
     tagSelect = document.getElementById('tags');
     searchInput = document.getElementById('search-input');
@@ -430,7 +438,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     actionBtnPracticeCard = document.getElementById('action-btn-practice-card');
     exitSingleCardPracticeBtn = document.getElementById('exit-single-card-practice-btn');
     bottomSheetTabsContainer = document.getElementById('bottom-sheet-tabs');
-    // tabBtnYouglish = document.getElementById('tab-btn-youglish'); // Đã loại bỏ
+    tabBtnYouglish = document.getElementById('tab-btn-youglish');
     tabBtnYouTube = document.getElementById('tab-btn-youtube');
     flipIconFront = document.getElementById('flip-icon-front');
     flipIconBack = document.getElementById('flip-icon-back');
@@ -461,7 +469,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupInitialCategoryAndSource();
-    setupEventListeners(); 
+    setupEventListeners(); // Bao gồm cả việc gắn listener cho vuốt thẻ
 
     function generateUniqueId(prefix = 'id') {
         return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`;
@@ -959,7 +967,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const firestoreStatus = await FirestoreService.getWebCardStatusFromFirestore(userId, getWebCardGlobalId(cardItem));
                 if (firestoreStatus) {
                     return {
-                        ...defaultCategoryState, 
+                        ...defaultCategoryState, // Nên là defaultCardStatus
                         ...firestoreStatus,
                         status: firestoreStatus.status || 'new',
                         isSuspended: firestoreStatus.isSuspended || false
@@ -1024,8 +1032,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
              console.log(`All cards loaded for user ${userId}:`, cards);
-        } else if (selectedDeckId === 'unassigned_cards') { 
-            cards = await FirestoreService.loadUserCardsFromFirestore(userId, null); 
+        } else if (selectedDeckId === 'unassigned_cards') { // Load unassigned cards
+            cards = await FirestoreService.loadUserCardsFromFirestore(userId, null); // Pass null or a specific identifier for unassigned
         }
         return cards.map(card => ({ ...card, isSuspended: card.isSuspended || false, videoUrl: card.videoUrl || null }));
     }
@@ -1105,19 +1113,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             generalNotes: cardGeneralNotesInput.value.trim(),
             videoUrl: cardVideoUrlInput.value.trim() || null,
             category: cardCategory,
-            deckId: assignedDeckId, 
+            deckId: assignedDeckId, // Sẽ là string rỗng nếu không chọn, hoặc ID của deck
             status: 'new',
-            lastReviewed: null, 
+            lastReviewed: null, // FirestoreService sẽ xử lý serverTimestamp
             reviewCount: 0,
-            nextReviewDate: serverTimestamp(), 
+            nextReviewDate: serverTimestamp(), // Để Firestore tự đặt khi tạo mới
             interval: 0,
             easeFactor: 2.5,
             repetitions: 0,
             isSuspended: false,
             updatedAt: serverTimestamp()
         };
-         if (!assignedDeckId && cardSourceSelect.value === 'user') { 
-            cardDataToSave.deckId = null; 
+         if (!assignedDeckId && cardSourceSelect.value === 'user') { // Thẻ người dùng nhưng không gán vào deck nào
+            cardDataToSave.deckId = null; // Hoặc một giá trị đặc biệt cho "unassigned"
         }
 
 
@@ -1138,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert(editingCardId ? "Đã cập nhật thẻ!" : "Đã thêm thẻ mới!");
             closeAddEditModal();
             if (currentDatasetSource === 'user') {
-                await loadVocabularyData(categorySelect.value); 
+                await loadVocabularyData(categorySelect.value); // Tải lại dữ liệu cho category hiện tại
             }
         }
         currentEditingCardId = null;
@@ -1157,9 +1165,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const cardToDelete = window.currentData[window.currentIndex];
         const cardIdToDelete = cardToDelete.id;
-        const deckIdOfCard = cardToDelete.deckId; 
+        const deckIdOfCard = cardToDelete.deckId; // deckId có thể là null cho thẻ chưa gán
 
-        if (!cardIdToDelete) { 
+        if (!cardIdToDelete) { // Không cần deckIdOfCard phải có giá trị
             alert("Không thể xác định thẻ để xóa. Thiếu ID thẻ.");
             return;
         }
@@ -1177,11 +1185,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 newIndex = 0;
             }
 
-            await loadVocabularyData(categorySelect.value); 
+            await loadVocabularyData(categorySelect.value); // Tải lại dữ liệu
 
             if(window.currentData.length > 0){
                 window.currentIndex = Math.min(newIndex, window.currentData.length - 1);
-                window.currentIndex = Math.max(0, window.currentIndex); 
+                window.currentIndex = Math.max(0, window.currentIndex); // Đảm bảo không âm
             } else {
                 window.currentIndex = 0;
             }
@@ -1414,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (cardOptionsMenuBtnBack) cardOptionsMenuBtnBack.style.display = 'none';
         if (actionBtnMedia) actionBtnMedia.style.display = 'flex';
         if (exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.style.display = 'none';
-        if (speakerExampleBtn) speakerExampleBtn.style.display = 'none'; 
+        if (speakerExampleBtn) speakerExampleBtn.style.display = 'none'; // Luôn ẩn nút này
 
 
         if (practiceType !== "off") {
@@ -1460,7 +1468,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                  if(prevBtn) prevBtn.style.display = 'inline-flex';
                  if(nextBtn) nextBtn.style.display = 'inline-flex';
-                 if(flipBtn) flipBtn.style.display = 'inline-flex'; 
+                 if(flipBtn) flipBtn.style.display = 'inline-flex'; // Sẽ là nút lật chung
             }
 
         } else {
@@ -1475,8 +1483,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const item = window.currentData.length > 0 ? window.currentData[window.currentIndex] : null;
-        console.log('[updateFlashcard] Current item for UI:', JSON.parse(JSON.stringify(item)));
-
 
         if (!item) {
             if(wordDisplay) {
@@ -1516,10 +1522,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(flipIconBack) flipIconBack.style.display = (practiceType === "off") ? 'block' : 'none';
 
 
-            currentWordSpansMeta = []; let accCC = 0; 
+            currentWordSpansMeta = []; let accCC = 0; // Reset for main word
             const iCV = item.category;
             const firstMeaningText = (item.meanings && item.meanings.length > 0) ? item.meanings[0].text : '';
-            let textForTTS; 
+            let textForTTS; // For the main word/phrase on the front
             let mainTermToDisplay = '';
 
             if (iCV === 'phrasalVerbs') mainTermToDisplay = item.phrasalVerb || '';
@@ -1620,7 +1626,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         examplesListDiv.className = "space-y-1.5";
                         examplesListDiv.dataset.meaningId = mObj.id;
 
-                        const maxVisibleExamples = 2; 
+                        const maxVisibleExamples = 2; // Hiển thị 2 ví dụ mặc định (do người dùng tự sửa)
                         const totalExamples = mObj.examples.length;
 
                         mObj.examples.forEach((ex, exIdx) => {
@@ -2139,9 +2145,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const createdDeck = await createDeck(newDeckName);
             if (createdDeck && createdDeck.id) {
                 targetDeckId = createdDeck.id;
-                await loadUserDecks(); 
-                copyToDeckSelect.value = targetDeckId; 
-                populateDeckSelects(); 
+                await loadUserDecks(); // Tải lại danh sách decks
+                copyToDeckSelect.value = targetDeckId; // Cập nhật select
+                populateDeckSelects(); // Cập nhật lại các select khác nếu cần
             } else {
                 copyNewDeckError.textContent = "Không thể tạo bộ thẻ mới. Vui lòng thử lại.";
                 copyNewDeckError.classList.remove('hidden');
@@ -2154,11 +2160,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const cardToCopy = { ...currentCard };
-        delete cardToCopy.id; 
+        delete cardToCopy.id; // Xóa ID cũ của thẻ web
         cardToCopy.isUserCard = true;
         cardToCopy.deckId = targetDeckId;
         cardToCopy.status = 'new';
-        cardToCopy.lastReviewed = null; 
+        cardToCopy.lastReviewed = null; // Sẽ được đặt bởi serverTimestamp
         cardToCopy.reviewCount = 0;
         cardToCopy.nextReviewDate = serverTimestamp();
         cardToCopy.interval = 0;
@@ -2169,7 +2175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         cardToCopy.createdAt = serverTimestamp();
         cardToCopy.updatedAt = serverTimestamp();
 
-        delete cardToCopy.webCardGlobalId; 
+        delete cardToCopy.webCardGlobalId; // Xóa thuộc tính này nếu có
 
         const newCardId = await FirestoreService.saveCardToFirestore(userId, targetDeckId, cardToCopy);
 
@@ -2181,7 +2187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(async () => {
                 closeCopyToDeckModal();
                 if (cardSourceSelect.value === 'user' && userDeckSelect.value === targetDeckId) {
-                    await loadVocabularyData(categorySelect.value); 
+                    await loadVocabularyData(categorySelect.value); // Tải lại nếu đang xem deck đó
                 }
             }, 2000);
         } else {
@@ -2190,7 +2196,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function openBottomSheet(cardItem, viewType = 'default', subView = 'youtube_custom') { // Mặc định là youtube
+    function openBottomSheet(cardItem, viewType = 'default', subView = 'youglish') {
         if (!cardItem || !bottomSheetContent || !bottomSheetTitle || !bottomSheetOverlay || !bottomSheet) return;
 
         let hasActions = false;
@@ -2200,9 +2206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         bottomSheet.classList.remove('bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
         bottomSheet.style.paddingBottom = '';
-        
-        // Nếu chỉ có YouTube, không cần hiển thị tabs
-        if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none';
+        if(bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none';
 
 
         if (viewType === 'default') {
@@ -2353,18 +2357,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (viewType === 'media') {
             bottomSheet.classList.add('bottom-sheet-media-mode');
             bottomSheetTitle.textContent = `Nghe/Xem: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
-            // Không hiển thị tabs nếu chỉ có YouTube
-            // if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'flex'; // Bỏ dòng này hoặc đặt là 'none'
+            if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'flex';
 
-            // Chỉ cần tạo container cho YouTube
-            let youtubeContentDiv = document.getElementById('youtube-tab-content');
-            if (!youtubeContentDiv) {
-                youtubeContentDiv = document.createElement('div');
-                youtubeContentDiv.id = 'youtube-tab-content';
-                youtubeContentDiv.className = 'bottom-sheet-tab-content'; // Sẽ luôn hiển thị
-                bottomSheetContent.appendChild(youtubeContentDiv);
+            let youglishContainer = document.getElementById('youglish-tab-content');
+            if (!youglishContainer) {
+                youglishContainer = document.createElement('div');
+                youglishContainer.id = 'youglish-tab-content';
+                youglishContainer.className = 'bottom-sheet-tab-content';
+                bottomSheetContent.appendChild(youglishContainer);
             }
-            setActiveMediaTab('youtube_custom', cardItem); // Mặc định là youtube
+            let youtubeContainer = document.getElementById('youtube-tab-content');
+            if (!youtubeContainer) {
+                youtubeContainer = document.createElement('div');
+                youtubeContainer.id = 'youtube-tab-content';
+                youtubeContainer.className = 'bottom-sheet-tab-content hidden';
+                bottomSheetContent.appendChild(youtubeContainer);
+            }
+
+            setActiveMediaTab(subView, cardItem);
             hasActions = true;
         } else if (viewType === 'practice_options') {
              bottomSheetTitle.textContent = `Luyện tập: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
@@ -2390,101 +2400,123 @@ document.addEventListener('DOMContentLoaded', async () => {
              console.log("Không có hành động nào cho thẻ này trong bottom sheet (default view).");
              if (cardOptionsMenuBtn) cardOptionsMenuBtn.style.display = 'none';
              if (cardOptionsMenuBtnBack) cardOptionsMenuBtnBack.style.display = 'none';
-             return; 
+             return; // Không mở bottom sheet nếu không có gì để hiển thị
         }
 
         bottomSheetOverlay.classList.remove('hidden');
         bottomSheet.classList.remove('translate-y-full');
         requestAnimationFrame(() => {
-            bottomSheetOverlay.classList.add('active'); 
+            bottomSheetOverlay.classList.add('active'); // Sử dụng class 'active' cho transition
             bottomSheet.classList.add('active');
         });
     }
 
     function setActiveMediaTab(tabName, cardItem) {
-        // const youglishContentDiv = document.getElementById('youglish-tab-content'); // Loại bỏ
-        const youtubeContentDiv = document.getElementById('youtube-tab-content');
-        let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "";
+        const youglishContent = document.getElementById('youglish-tab-content');
+        const youtubeContent = document.getElementById('youtube-tab-content');
+        let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "Thẻ";
 
-        // if (youglishContentDiv) youglishContentDiv.classList.add('hidden'); // Loại bỏ
-        if (youtubeContentDiv) youtubeContentDiv.classList.add('hidden');
-        // if (tabBtnYouglish) tabBtnYouglish.classList.remove('active'); // Loại bỏ
-        if (tabBtnYouTube) tabBtnYouTube.classList.remove('active'); // Sẽ không cần nếu chỉ có 1 tab
-        
-        // Không cần destroy Youglish widget nữa
-        // if (tabName !== 'youglish' && currentYouglishWidget && typeof currentYouglishWidget.destroy === 'function') { ... }
+        if (currentYouglishWidget) {
+            try { currentYouglishWidget.destroy(); } catch(e) { console.warn("Error destroying Youglish widget", e); }
+            currentYouglishWidget = null;
+        }
+        if (youglishContent) youglishContent.innerHTML = '';
+        if (youtubeContent) youtubeContent.innerHTML = '';
 
-        if (tabName === 'youtube_custom') { // Đây sẽ là trường hợp duy nhất cho media
-            // if (tabBtnYouTube) tabBtnYouTube.classList.add('active'); // Không cần nếu chỉ có 1 tab
-            if (youtubeContentDiv) {
-                youtubeContentDiv.classList.remove('hidden');
-                youtubeContentDiv.innerHTML = ''; 
+        if (tabName === 'youglish') {
+            if (tabBtnYouglish) tabBtnYouglish.classList.add('active');
+            if (tabBtnYouTube) tabBtnYouTube.classList.remove('active');
+            if (youglishContent) youglishContent.classList.remove('hidden');
+            if (youtubeContent) youtubeContent.classList.add('hidden');
 
-                if (cardItem.videoUrl) {
-                    const videoId = extractYouTubeVideoId(cardItem.videoUrl);
-                    if (videoId) {
-                        const iframeContainer = document.createElement('div');
-                        iframeContainer.className = 'video-iframe-container w-full';
-                        const iframe = document.createElement('iframe');
-                        iframe.src = `https://www.youtube.com/embed/$${videoId}`; // URL chuẩn
-                        iframe.title = "YouTube video player";
-                        iframe.frameBorder = "0";
-                        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-                        iframe.allowFullscreen = true;
-                        iframeContainer.appendChild(iframe);
-                        youtubeContentDiv.appendChild(iframeContainer);
-                    } else {
-                        youtubeContentDiv.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Link video YouTube không hợp lệ.</p>';
-                    }
-                } else {
-                     const searchButtonContainer = document.createElement('div');
-                     searchButtonContainer.className = 'p-4 text-center'; 
+            const widgetContainerId = 'youglish-widget-dynamic-' + Date.now();
+            const widgetDiv = document.createElement('div');
+            widgetDiv.id = widgetContainerId;
+            widgetDiv.className = 'video-iframe-container'; // Đảm bảo class này có style phù hợp
+            if (youglishContent) youglishContent.appendChild(widgetDiv);
 
-                     const pMessage = document.createElement('p');
-                     pMessage.className = 'text-slate-500 dark:text-slate-400 mb-3'; 
-                     pMessage.textContent = 'Chưa có video YouTube nào được gán. Bạn có thể thêm link khi sửa thẻ, hoặc:';
-                     searchButtonContainer.appendChild(pMessage);
-
-                     const searchButton = document.createElement('button');
-                     searchButton.className = 'py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md shadow-sm flex items-center justify-center mx-auto'; 
-                     const baseSearchTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "";
-                     const youtubeSearchTerm = `học từ ${baseSearchTerm}`; 
-                     searchButton.innerHTML = `<i class="fab fa-youtube mr-2"></i> Tìm trên YouTube với từ khóa "${baseSearchTerm}"`;
-                     searchButton.onclick = () => {
-                         window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSearchTerm)}`, '_blank');
-                     };
-                     searchButtonContainer.appendChild(searchButton);
-                     youtubeContentDiv.appendChild(searchButtonContainer);
+            const createWidget = () => {
+                if (document.getElementById(widgetContainerId)) { // Kiểm tra xem phần tử còn tồn tại không
+                     currentYouglishWidget = new YG.Widget(widgetContainerId, {
+                        width: "100%", // Hoặc kích thước cụ thể
+                        // height: "300", // Ví dụ
+                        components: 0, // 0: video only, 1: video + caption, 2: video + caption + tracklist
+                        events: {
+                            'onFetchDone': function(event) {
+                                if (event.totalResults === 0 && document.getElementById(widgetContainerId)) {
+                                    document.getElementById(widgetContainerId).innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Không tìm thấy kết quả cho từ này trên Youglish.</p>';
+                                }
+                            },
+                            'onError': function(event) {
+                                if (document.getElementById(widgetContainerId)) {
+                                    document.getElementById(widgetContainerId).innerHTML = '<p class="text-red-500 dark:text-red-400 p-4 text-center">Lỗi tải Youglish widget.</p>';
+                                }
+                            }
+                        }
+                    });
+                    currentYouglishWidget.fetch(cardTerm, "english", "us"); // Mặc định US accent
                 }
+            };
+
+            if (isYouglishApiReady && typeof YG !== "undefined" && YG.Widget) {
+                createWidget();
+            } else {
+                console.log("Youglish API not ready, queuing widget creation for:", cardTerm);
+                window.processPendingYouglishWidget = createWidget; // Lưu hàm để gọi sau
+            }
+
+        } else if (tabName === 'youtube_custom') { // Đổi tên tab để rõ ràng hơn
+            if (tabBtnYouTube) tabBtnYouTube.classList.add('active');
+            if (tabBtnYouglish) tabBtnYouglish.classList.remove('active');
+            if (youtubeContent) youtubeContent.classList.remove('hidden');
+            if (youglishContent) youglishContent.classList.add('hidden');
+
+            if (cardItem.videoUrl) {
+                const videoId = extractYouTubeVideoId(cardItem.videoUrl);
+                if (videoId) {
+                    const iframeContainer = document.createElement('div');
+                    iframeContainer.className = 'video-iframe-container w-full'; // Đảm bảo class này có style
+                    const iframe = document.createElement('iframe');
+                    iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                    iframe.title = "YouTube video player";
+                    iframe.frameBorder = "0";
+                    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+                    iframe.allowFullscreen = true;
+                    iframeContainer.appendChild(iframe);
+                    if (youtubeContent) youtubeContent.appendChild(iframeContainer);
+                } else {
+                    if (youtubeContent) youtubeContent.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Link video YouTube không hợp lệ.</p>';
+                }
+            } else {
+                if (youtubeContent) youtubeContent.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Chưa có video YouTube nào được gán cho thẻ này. Bạn có thể thêm link trong phần sửa thẻ.</p>';
             }
         }
-        // Không còn case 'youglish' nữa
     }
 
 
     function closeBottomSheet() {
         if (!bottomSheet || !bottomSheetOverlay) return;
 
-        // Không cần destroy Youglish widget nữa
-        // if (currentYouglishWidget && typeof currentYouglishWidget.destroy === 'function') { ... }
-        // const oldYgLink = document.getElementById(YOUGLISH_WIDGET_ID);
-        // if (oldYgLink && oldYgLink.parentNode) { ... }
-
+        if (currentYouglishWidget) {
+            try { currentYouglishWidget.destroy(); } catch(e) { console.warn("Error destroying Youglish widget during close", e); }
+            currentYouglishWidget = null;
+        }
 
         bottomSheet.classList.remove('active', 'bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
         bottomSheetOverlay.classList.remove('active');
-        bottomSheet.style.paddingBottom = ''; 
-        if(bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none'; 
+        bottomSheet.style.paddingBottom = ''; // Reset padding nếu có
+        if(bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none'; // Ẩn tabs
 
         setTimeout(() => {
             bottomSheet.classList.add('translate-y-full');
             bottomSheetOverlay.classList.add('hidden');
+            // Xóa src của iframe để dừng video (nếu có)
             const videoIframe = bottomSheetContent.querySelector('iframe');
             if (videoIframe) {
-                videoIframe.src = ''; 
+                videoIframe.src = ''; // Hoặc videoIframe.remove();
             }
-            bottomSheetContent.innerHTML = ''; 
-        }, 300); 
+            bottomSheetContent.innerHTML = ''; // Dọn dẹp nội dung
+        }, 300); // Thời gian transition
     }
 
     function extractYouTubeVideoId(url) {
@@ -2505,9 +2537,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.currentData = [cardItem];
         window.currentIndex = 0;
 
-        practiceType = practiceMode; 
+        practiceType = practiceMode; // Cập nhật chế độ luyện tập toàn cục
 
-        updateFlashcard(); 
+        updateFlashcard(); // Cập nhật UI thẻ
         showToast(`Bắt đầu luyện tập thẻ: ${cardItem.word || cardItem.phrasalVerb || cardItem.collocation}`, 3000);
     }
 
@@ -2519,10 +2551,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.currentData = [...originalCurrentData];
         window.currentIndex = originalCurrentIndex;
 
-        practiceType = 'off'; 
-        if (practiceTypeSelect) practiceTypeSelect.value = 'off'; 
+        practiceType = 'off'; // Reset chế độ luyện tập
+        if (practiceTypeSelect) practiceTypeSelect.value = 'off'; // Cập nhật select nếu có
 
-        updateFlashcard(); 
+        updateFlashcard(); // Cập nhật UI thẻ
         showToast("Đã thoát chế độ luyện tập thẻ.", 2000);
     }
 
@@ -2533,8 +2565,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         touchStartX = event.touches[0].clientX;
         touchStartY = event.touches[0].clientY;
-        touchEndX = touchStartX; 
-        touchEndY = touchStartY; 
+        touchEndX = touchStartX; // Khởi tạo touchEndX để tránh lỗi nếu không có touchmove
+        touchEndY = touchStartY; // Khởi tạo touchEndY
     }
 
     function handleTouchMove(event) {
@@ -2553,18 +2585,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         const horizontalDiff = touchEndX - touchStartX;
         const verticalDiff = touchEndY - touchStartY;
 
+        // Chỉ xử lý nếu đây là một cú vuốt ngang rõ rệt
         if (Math.abs(horizontalDiff) > Math.abs(verticalDiff) && Math.abs(horizontalDiff) > swipeThreshold) {
-            event.preventDefault(); 
-            if (horizontalDiff > 0) { 
+            event.preventDefault(); // Ngăn các hành vi mặc định NẾU nó là một cú vuốt ngang hợp lệ
+            if (horizontalDiff > 0) { // Vuốt sang phải (Previous card)
                 if (prevBtn && !prevBtn.disabled) {
                     prevBtn.click();
                 }
-            } else { 
+            } else { // Vuốt sang trái (Next card)
                 if (nextBtn && !nextBtn.disabled) {
                     nextBtn.click();
                 }
             }
         }
+        // Reset touch coordinates
         touchStartX = 0;
         touchEndX = 0;
         touchStartY = 0;
@@ -2578,12 +2612,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
         if(sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
 
-        if (cardFrontElement) { 
-            cardFrontElement.addEventListener('touchstart', handleTouchStart, { passive: true }); 
+        // --- START: Gắn event listener cho vuốt thẻ ---
+        if (cardFrontElement) { // cardFrontElement đã được gán ở DOMContentLoaded
+            cardFrontElement.addEventListener('touchstart', handleTouchStart, { passive: true }); // passive: true cho phép scroll nếu không preventDefault
             cardFrontElement.addEventListener('touchmove', handleTouchMove, { passive: true });
-            cardFrontElement.addEventListener('touchend', handleTouchEnd, false); 
+            cardFrontElement.addEventListener('touchend', handleTouchEnd, false); // false để có thể gọi preventDefault bên trong nếu cần
         }
-        
+        // --- END: Gắn event listener cho vuốt thẻ ---
+
         if(cardSourceSelect) cardSourceSelect.addEventListener('change', async (e)=>{
             currentDatasetSource=e.target.value;
             const userId = getCurrentUserId();
@@ -2734,7 +2770,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         if(actionBtnMedia) actionBtnMedia.addEventListener('click', () => {
             const currentCard = window.currentData[window.currentIndex];
-            if (currentCard) openBottomSheet(currentCard, 'media', 'youtube_custom'); // Mặc định mở tab YouTube
+            if (currentCard) openBottomSheet(currentCard, 'media', 'youglish'); 
         });
         if(actionBtnPracticeCard) actionBtnPracticeCard.addEventListener('click', () => {
             const currentCard = window.currentData[window.currentIndex];
@@ -2742,11 +2778,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         if(exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.addEventListener('click', exitSingleCardPractice);
 
-        // Loại bỏ event listener cho tab Youglish nếu nó không còn tồn tại
-        // if(tabBtnYouglish) tabBtnYouglish.addEventListener('click', () => {
-        //     const currentCard = window.currentData[window.currentIndex];
-        //     if(currentCard) setActiveMediaTab('youglish', currentCard);
-        // });
+        if(tabBtnYouglish) tabBtnYouglish.addEventListener('click', () => {
+            const currentCard = window.currentData[window.currentIndex];
+            if(currentCard) setActiveMediaTab('youglish', currentCard);
+        });
         if(tabBtnYouTube) tabBtnYouTube.addEventListener('click', () => {
             const currentCard = window.currentData[window.currentIndex];
             if(currentCard) setActiveMediaTab('youtube_custom', currentCard);
@@ -2826,10 +2861,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(cardTagsInput) cardTagsInput.addEventListener('focus', () => { const fullInputValue = cardTagsInput.value; const lastCommaIndex = fullInputValue.lastIndexOf(','); const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase(); const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase()); const filteredSuggestions = tagSuggestions.filter(tag => tag.toLowerCase().includes(currentTagQuery) && !alreadyAddedTags.includes(tag.toLowerCase()) ); if (filteredSuggestions.length > 0 || currentTagQuery.length === 0) { showAutocompleteSuggestions(cardTagsInput, filteredSuggestions.slice(0, 5), true); } });
         document.addEventListener('click', function(event) { const activeSuggestionsList = document.querySelector('.autocomplete-suggestions-list'); if (activeSuggestionsList) { const inputId = activeSuggestionsList.id.replace('-suggestions', ''); const inputElement = document.getElementById(inputId); if (inputElement && !inputElement.contains(event.target) && !activeSuggestionsList.contains(event.target)) { hideAutocompleteSuggestions(inputElement); } } });
 
+        // Setup Auth Modal listeners after DOM is ready
+        // setupAuthModalDOMListeners(); // Gọi hàm này từ auth.js (đã được nhúng)
     }
 
     async function setupInitialCategoryAndSource() {
-        if (!getCurrentUserId()) { 
+        if (!getCurrentUserId()) { // Từ auth.js
             await loadAppState();
         }
 
