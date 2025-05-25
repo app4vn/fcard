@@ -33,7 +33,7 @@ const db = getFirestore(fbApp);
 // KHAI BÁO CÁC BIẾN DOM SẼ ĐƯỢC SỬ DỤNG Ở PHẠM VI MODULE
 let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDisplay,
     pronunciationDisplay, meaningDisplayContainer, notesDisplay, prevBtn, flipBtn,
-    nextBtn, currentCardIndexDisplay, totalCardsDisplay, speakerBtn, speakerExampleBtn,
+    nextBtn, currentCardIndexDisplay, totalCardsDisplay, speakerBtn, speakerExampleBtn, // speakerExampleBtn sẽ được ẩn
     tagFilterContainer, tagSelect, searchInput, baseVerbFilterContainer, baseVerbSelect,
     practiceTypeSelect, practiceArea, multipleChoiceOptionsContainer, feedbackMessage,
     filterCardStatusSelect,
@@ -60,7 +60,7 @@ let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDis
     actionBtnNotes, actionBtnMedia, actionBtnPracticeCard,
     exitSingleCardPracticeBtn,
     bottomSheetTabsContainer, tabBtnYouglish, tabBtnYouTube,
-    flipIconFront, flipIconBack; // Thêm biến cho nút lật thẻ mới
+    flipIconFront, flipIconBack;
 
 
 // KHAI BÁO CÁC BIẾN TRẠNG THÁI ỨNG DỤNG Ở PHẠM VI MODULE
@@ -78,9 +78,10 @@ let currentCorrectAnswerForPractice = '';
 let userDecks = [];
 let learningCardNextButtonTimer = null;
 let learningCardCountdownInterval = null;
-let exampleSpeechQueue = [];
-let currentExampleSpeechIndex = 0;
-let isSpeakingExampleQueue = false;
+// Loại bỏ các biến liên quan đến hàng đợi phát âm ví dụ
+// let exampleSpeechQueue = [];
+// let currentExampleSpeechIndex = 0;
+// let isSpeakingExampleQueue = false;
 let currentEditingCardId = null;
 let currentEditingDeckId = null;
 let isSingleCardPracticeMode = false;
@@ -299,7 +300,7 @@ function showToast(message, duration = 3000, type = 'info') {
 
     srsFeedbackToastEl.textContent = message;
     srsFeedbackToastEl.classList.remove('bg-slate-700', 'bg-red-600', 'bg-green-600', 'opacity-0', 'hidden');
-    srsFeedbackToastEl.classList.add('show');
+    srsFeedbackToastEl.classList.add('show'); // Lớp 'show' để kích hoạt animation nếu có
 
     if (type === 'error') {
         srsFeedbackToastEl.classList.add('bg-red-600');
@@ -312,6 +313,7 @@ function showToast(message, duration = 3000, type = 'info') {
     clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => {
         srsFeedbackToastEl.classList.remove('show');
+        // Thêm class hidden sau khi animation hoàn tất nếu cần, hoặc để CSS xử lý visibility
     }, duration);
 }
 
@@ -332,7 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentCardIndexDisplay = document.getElementById('current-card-index');
     totalCardsDisplay = document.getElementById('total-cards');
     speakerBtn = document.getElementById('speaker-btn');
-    speakerExampleBtn = document.getElementById('speaker-example-btn');
+    speakerExampleBtn = document.getElementById('speaker-example-btn'); // Sẽ được ẩn đi
     tagFilterContainer = document.getElementById('tag-filter-container');
     tagSelect = document.getElementById('tags');
     searchInput = document.getElementById('search-input');
@@ -422,8 +424,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     bottomSheetTabsContainer = document.getElementById('bottom-sheet-tabs');
     tabBtnYouglish = document.getElementById('tab-btn-youglish');
     tabBtnYouTube = document.getElementById('tab-btn-youtube');
-    flipIconFront = document.getElementById('flip-icon-front'); // Gán biến cho nút lật thẻ mới
-    flipIconBack = document.getElementById('flip-icon-back');   // Gán biến cho nút lật thẻ mới
+    flipIconFront = document.getElementById('flip-icon-front');
+    flipIconBack = document.getElementById('flip-icon-back');
 
     window.wordDisplay = wordDisplay;
     window.updateSidebarFilterVisibility = updateSidebarFilterVisibility;
@@ -622,7 +624,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const input = document.createElement('input');
         input.type='text';
         input.value=originalName;
-        input.className='editing-deck-input';
+        input.className='editing-deck-input w-full border border-slate-300 rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500'; // Added styling
 
         const saveButton = document.createElement('button');
         saveButton.innerHTML='<i class="fas fa-check"></i>';
@@ -640,8 +642,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         cancelButton.onclick=()=>cancelEditDeckName(id, el, originalName);
 
         const editControlsDiv = document.createElement('div');
-        editControlsDiv.className='flex items-center edit-deck-controls w-full';
-        editControlsDiv.appendChild(input);
+        editControlsDiv.className='flex items-center edit-deck-controls w-full'; // Ensure full width
+        editControlsDiv.appendChild(input); // Input takes flex-grow
         editControlsDiv.appendChild(saveButton);
         editControlsDiv.appendChild(cancelButton);
 
@@ -949,7 +951,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const firestoreStatus = await FirestoreService.getWebCardStatusFromFirestore(userId, getWebCardGlobalId(cardItem));
                 if (firestoreStatus) {
                     return {
-                        ...defaultCategoryState,
+                        ...defaultCategoryState, // Nên là defaultCardStatus
                         ...firestoreStatus,
                         status: firestoreStatus.status || 'new',
                         isSuspended: firestoreStatus.isSuspended || false
@@ -1014,6 +1016,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
              console.log(`All cards loaded for user ${userId}:`, cards);
+        } else if (selectedDeckId === 'unassigned_cards') { // Load unassigned cards
+            cards = await FirestoreService.loadUserCardsFromFirestore(userId, null); // Pass null or a specific identifier for unassigned
         }
         return cards.map(card => ({ ...card, isSuspended: card.isSuspended || false, videoUrl: card.videoUrl || null }));
     }
@@ -1093,17 +1097,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             generalNotes: cardGeneralNotesInput.value.trim(),
             videoUrl: cardVideoUrlInput.value.trim() || null,
             category: cardCategory,
-            deckId: assignedDeckId,
+            deckId: assignedDeckId, // Sẽ là string rỗng nếu không chọn, hoặc ID của deck
             status: 'new',
-            lastReviewed: null,
+            lastReviewed: null, // FirestoreService sẽ xử lý serverTimestamp
             reviewCount: 0,
-            nextReviewDate: serverTimestamp(),
+            nextReviewDate: serverTimestamp(), // Để Firestore tự đặt khi tạo mới
             interval: 0,
             easeFactor: 2.5,
             repetitions: 0,
             isSuspended: false,
             updatedAt: serverTimestamp()
         };
+         if (!assignedDeckId && cardSourceSelect.value === 'user') { // Thẻ người dùng nhưng không gán vào deck nào
+            cardDataToSave.deckId = null; // Hoặc một giá trị đặc biệt cho "unassigned"
+        }
+
 
         if (cardCategory === 'phrasalVerbs' || cardCategory === 'collocations') {
             if (cardCategory === 'phrasalVerbs') cardDataToSave.phrasalVerb = wordValue;
@@ -1115,13 +1123,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const editingCardId = cardIdInput.value;
-        const savedCardId = await FirestoreService.saveCardToFirestore(userId, assignedDeckId, cardDataToSave, editingCardId);
+        const savedCardId = await FirestoreService.saveCardToFirestore(userId, assignedDeckId || null, cardDataToSave, editingCardId);
+
 
         if (savedCardId) {
             alert(editingCardId ? "Đã cập nhật thẻ!" : "Đã thêm thẻ mới!");
             closeAddEditModal();
             if (currentDatasetSource === 'user') {
-                await loadVocabularyData(categorySelect.value);
+                await loadVocabularyData(categorySelect.value); // Tải lại dữ liệu cho category hiện tại
             }
         }
         currentEditingCardId = null;
@@ -1140,14 +1149,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const cardToDelete = window.currentData[window.currentIndex];
         const cardIdToDelete = cardToDelete.id;
-        const deckIdOfCard = cardToDelete.deckId;
+        const deckIdOfCard = cardToDelete.deckId; // deckId có thể là null cho thẻ chưa gán
 
-        if (!cardIdToDelete || !deckIdOfCard) {
-            alert("Không thể xác định thẻ để xóa. Thiếu ID thẻ hoặc ID bộ thẻ.");
+        if (!cardIdToDelete) { // Không cần deckIdOfCard phải có giá trị
+            alert("Không thể xác định thẻ để xóa. Thiếu ID thẻ.");
             return;
         }
-
-        if(!confirm(`Bạn có chắc chắn muốn xóa thẻ "${getCardIdentifier(cardToDelete,cardToDelete.category)}"? Hành động này không thể hoàn tác.`))return;
+        const cardIdentifierText = cardToDelete.word || cardToDelete.phrasalVerb || cardToDelete.collocation || "Thẻ không tên";
+        if(!confirm(`Bạn có chắc chắn muốn xóa thẻ "${cardIdentifierText}"? Hành động này không thể hoàn tác.`))return;
 
         const success = await FirestoreService.deleteCardFromFirestore(userId, deckIdOfCard, cardIdToDelete);
 
@@ -1156,15 +1165,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             let newIndex = window.currentIndex;
             if(window.currentIndex >= window.currentData.length - 1 && window.currentIndex > 0) {
                 newIndex = window.currentIndex - 1;
-            } else if (window.currentData.length - 1 === 0) {
+            } else if (window.currentData.length - 1 === 0) { // Sửa lỗi logic ở đây
                 newIndex = 0;
             }
 
-            await loadVocabularyData(categorySelect.value);
+            await loadVocabularyData(categorySelect.value); // Tải lại dữ liệu
 
             if(window.currentData.length > 0){
                 window.currentIndex = Math.min(newIndex, window.currentData.length - 1);
-                window.currentIndex = Math.max(0, window.currentIndex);
+                window.currentIndex = Math.max(0, window.currentIndex); // Đảm bảo không âm
             } else {
                 window.currentIndex = 0;
             }
@@ -1175,7 +1184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     function shuffleArray(arr){const nA=[...arr];for(let i=nA.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[nA[i],nA[j]]=[nA[j],nA[i]];}return nA;}
     function speakText(txt,meta=[],cb=null){if(!txt||!txt.trim()){if(cb)cb();return;}if('speechSynthesis'in window){const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=0.9;u.pitch=1;window.speechSynthesis.cancel();if(meta.length>0){u.onstart=()=>meta.forEach(m=>m.element.classList.remove('highlighted-word'));u.onboundary=e=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));let f=false;for(const m of meta){if(e.charIndex>=m.start&&e.charIndex<m.start+m.length){m.element.classList.add('highlighted-word');f=true;break;}}if(!f&&meta.length>0){for(let i=meta.length-1;i>=0;i--){const m=meta[i];if(e.charIndex>=m.start){if((i===meta.length-1)||(e.charIndex<meta[i+1].start)){m.element.classList.add('highlighted-word');break;}}}}};u.onend=()=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));if(cb)cb();};u.onerror=e=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));console.error("Lỗi phát âm:", e);if(cb)cb();};}else{u.onend=()=>{if(cb)cb();};u.onerror=e=>{console.error("Lỗi phát âm:", e);if(cb)cb();};}window.speechSynthesis.speak(u);}else{console.warn("Trình duyệt không hỗ trợ Speech Synthesis.");if(cb)cb();}}
-    function playNextExampleInQueue(){if(!isSpeakingExampleQueue||currentExampleSpeechIndex>=exampleSpeechQueue.length){isSpeakingExampleQueue=false;currentExampleSpeechIndex=0;exampleSpeechQueue=[];speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));return;}const p=exampleSpeechQueue[currentExampleSpeechIndex];speakText(p.text,p.spansMeta,()=>{currentExampleSpeechIndex++;playNextExampleInQueue();});}
+    // Loại bỏ hàm playNextExampleInQueue()
     function populateBaseVerbFilter(arr){const bV=new Set();arr.forEach(i=>{if(i.baseVerb)bV.add(i.baseVerb);});baseVerbSelect.innerHTML='';const oA=document.createElement('option');oA.value='all';oA.textContent='Tất cả từ gốc';baseVerbSelect.appendChild(oA);const sBV=Array.from(bV).sort((a,b)=>a.localeCompare(b,'en'));sBV.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v.charAt(0).toUpperCase()+v.slice(1);baseVerbSelect.appendChild(o);});}
     function populateTagFilter(arr){const tT=new Set();arr.forEach(i=>{if(i.tags&&Array.isArray(i.tags)){i.tags.forEach(t=>{if(tagDisplayNames[t]&&t!=='all'&&!t.startsWith('particle_'))tT.add(t);});}});tagSelect.innerHTML='';const oA=document.createElement('option');oA.value='all';oA.textContent=tagDisplayNames["all"]||'Tất cả chủ đề';tagSelect.appendChild(oA);const sTK=Array.from(tT).sort((a,b)=>(tagDisplayNames[a]||a).localeCompare(tagDisplayNames[b]||b,'vi'));sTK.forEach(tK=>{const o=document.createElement('option');o.value=tK;o.textContent=tagDisplayNames[tK]||(tK.charAt(0).toUpperCase()+tK.slice(1));tagSelect.appendChild(o);});}
 
@@ -1197,7 +1206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (reviewDate <= today) {
                         reviewTodayCards.push(item);
                     }
-                } else if (item.status === 'new' && item.nextReviewDate === null) {
+                } else if (item.status === 'new' && item.nextReviewDate === null) { // Thẻ mới cũng cần ôn
                     reviewTodayCards.push(item);
                 }
             }
@@ -1206,7 +1215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (sFV !== 'all_visible') {
             const filteredByStatus = [];
             for (const item of lTP) {
-                if (item.isSuspended && sFV !== 'all_visible') continue;
+                if (item.isSuspended && sFV !== 'all_visible') continue; // Bỏ qua thẻ tạm ngưng trừ khi xem tất cả
                 const sV = item.status || 'new';
                 if(sFV==='all_study' && (sV==='new'||sV==='learning')) filteredByStatus.push(item);
                 else if(sFV==='new' && sV==='new') filteredByStatus.push(item);
@@ -1224,7 +1233,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         clearLearningTimer();
         wordDisplay.innerHTML = '<span class="text-slate-400 text-xl">Đang tải dữ liệu...</span>';
         currentWordSpansMeta = []; pronunciationDisplay.textContent = ''; tagsDisplayFront.textContent = ''; meaningDisplayContainer.innerHTML = ''; notesDisplay.innerHTML = '';
-        window.currentData = []; activeMasterList = []; speakerBtn.disabled = true; speakerExampleBtn.disabled = true;
+        window.currentData = []; activeMasterList = []; speakerBtn.disabled = true;
+        if (speakerExampleBtn) speakerExampleBtn.style.display = 'none'; // Ẩn nút phát tất cả ví dụ
 
         const stateForCurrentSourceCategory = getCategoryState(currentDatasetSource, category);
         filterCardStatusSelect.value = stateForCurrentSourceCategory.filterMarked;
@@ -1237,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if(loginPromptBtn) loginPromptBtn.onclick = () => {
                     openAuthModalFromAuth('login');
                 };
-                pronunciationDisplay.style.display = 'none'; tagsDisplayFront.style.display = 'none'; speakerBtn.style.display = 'none'; speakerExampleBtn.style.display = 'none';
+                pronunciationDisplay.style.display = 'none'; tagsDisplayFront.style.display = 'none'; speakerBtn.style.display = 'none';
                 updateStatusButtonsUI(null, null); updateCardInfo(); window.updateMainHeaderTitle(); window.updateSidebarFilterVisibility();
                 return;
             }
@@ -1397,6 +1407,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (cardOptionsMenuBtnBack) cardOptionsMenuBtnBack.style.display = 'none';
         if (actionBtnMedia) actionBtnMedia.style.display = 'flex';
         if (exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.style.display = 'none';
+        if (speakerExampleBtn) speakerExampleBtn.style.display = 'none'; // Luôn ẩn nút này
 
 
         if (practiceType !== "off") {
@@ -1442,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                  if(prevBtn) prevBtn.style.display = 'inline-flex';
                  if(nextBtn) nextBtn.style.display = 'inline-flex';
-                 if(flipBtn) flipBtn.style.display = 'inline-flex';
+                 if(flipBtn) flipBtn.style.display = 'inline-flex'; // Sẽ là nút lật chung
             }
 
         } else {
@@ -1483,19 +1494,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(pronunciationDisplay) pronunciationDisplay.style.display = 'none';
             if(tagsDisplayFront) tagsDisplayFront.style.display = 'none';
             if(speakerBtn) speakerBtn.style.display = 'none';
-            if(speakerExampleBtn) speakerExampleBtn.style.display = 'none';
+            // if(speakerExampleBtn) speakerExampleBtn.style.display = 'none'; // Đã ẩn ở trên
             if(flipBtn) flipBtn.disabled = true;
-            if(flipIconFront) flipIconFront.style.display = 'none'; // Ẩn icon lật thẻ khi không có thẻ
-            if(flipIconBack) flipIconBack.style.display = 'none';   // Ẩn icon lật thẻ khi không có thẻ
+            if(flipIconFront) flipIconFront.style.display = 'none';
+            if(flipIconBack) flipIconBack.style.display = 'none';
             updateStatusButtonsUI();
         } else {
             if(pronunciationDisplay) pronunciationDisplay.style.display = 'block';
             if(tagsDisplayFront) tagsDisplayFront.style.display = 'block';
             if(speakerBtn) speakerBtn.style.display = 'block';
-            if(speakerExampleBtn) speakerExampleBtn.style.display = 'block';
+            // if(speakerExampleBtn) speakerExampleBtn.style.display = 'none'; // Đảm bảo ẩn
             if(flipBtn) flipBtn.disabled = (practiceType !== "off");
-            if(flipIconFront) flipIconFront.style.display = (practiceType === "off") ? 'block' : 'none'; // Hiển thị icon lật thẻ
-            if(flipIconBack) flipIconBack.style.display = (practiceType === "off") ? 'block' : 'none';   // Hiển thị icon lật thẻ
+            if(flipIconFront) flipIconFront.style.display = (practiceType === "off") ? 'block' : 'none';
+            if(flipIconBack) flipIconBack.style.display = (practiceType === "off") ? 'block' : 'none';
 
 
             currentWordSpansMeta = []; let accCC = 0;
@@ -1509,22 +1520,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             else mainTermToDisplay = item.word || '';
 
             if (practiceType === 'word_quiz') {
-                textForTTS = firstMeaningText;
+                textForTTS = firstMeaningText; // Câu hỏi là nghĩa, TTS đọc nghĩa
                 const mTSp = document.createElement('span');
-                mTSp.className = 'text-3xl sm:text-4xl font-bold';
-                const segs = firstMeaningText.split(/(\s+)/);
+                mTSp.className = 'text-3xl sm:text-4xl font-bold'; // Giữ style cho câu hỏi
+                const segs = firstMeaningText.split(/(\s+)/); // Tách từ cho highlight (nếu cần)
                 segs.forEach(s => { if (s.trim() !== '') { const wS = document.createElement('span'); wS.textContent = s; mTSp.appendChild(wS); currentWordSpansMeta.push({ element: wS, start: accCC, length: s.length }); } else mTSp.appendChild(document.createTextNode(s)); accCC += s.length; });
                 if(wordDisplay) wordDisplay.appendChild(mTSp);
                 if(pronunciationDisplay) pronunciationDisplay.style.display = 'none';
                 if(tagsDisplayFront) tagsDisplayFront.style.display = 'none';
-                if(speakerBtn) speakerBtn.style.display = 'none';
-            } else {
-                let bTFM = "";
-                const pts = mainTermToDisplay.split(/(\([^)]+\))/g).filter(p => p);
+                if(speakerBtn) speakerBtn.style.display = 'none'; // Không có nút loa cho câu hỏi (nghĩa)
+            } else { // Các chế độ khác, hiển thị từ/cụm từ
+                let bTFM = ""; // buildTextForMainDisplay
+                const pts = mainTermToDisplay.split(/(\([^)]+\))/g).filter(p => p); // Tách phần trong ngoặc
                 pts.forEach((p, pI) => { const iD = p.startsWith('(') && p.endsWith(')'); const cS = document.createElement('span'); cS.className = iD ? 'text-xl opacity-80 ml-1' : 'text-3xl sm:text-4xl font-bold'; const segs = p.split(/(\s+)/); segs.forEach(s => { bTFM += s; if (s.trim() !== '') { const wS = document.createElement('span'); wS.textContent = s; cS.appendChild(wS); currentWordSpansMeta.push({ element: wS, start: bTFM.length - s.length, length: s.length }); } else cS.appendChild(document.createTextNode(s)); }); if(wordDisplay) wordDisplay.appendChild(cS); if (pI < pts.length - 1) { const nPID = pts[pI + 1].startsWith('(') && pts[pI + 1].endsWith(')'); if (!p.endsWith(' ') && !pts[pI + 1].startsWith(' ') && !(iD && nPID)) { if(wordDisplay) wordDisplay.appendChild(document.createTextNode(' ')); bTFM += ' '; } } });
-                textForTTS = bTFM;
+                textForTTS = bTFM; // Text cho TTS là từ/cụm từ chính
             }
-            if(wordDisplay) wordDisplay.dataset.ttsText = textForTTS;
+            if(wordDisplay) wordDisplay.dataset.ttsText = textForTTS; // Lưu text cho nút loa chính
             if(pronunciationDisplay) pronunciationDisplay.textContent = item.pronunciation || '';
             if ((iCV === 'phrasalVerbs' || iCV === 'collocations') && item.tags && practiceType !== 'word_quiz') {
                 const dT = item.tags.filter(t => t && t !== 'all' && !t.startsWith('particle_') && tagDisplayNames[t]).map(t => tagDisplayNames[t]);
@@ -1551,1069 +1562,1199 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (actionBtnMedia && item) actionBtnMedia.style.display = 'flex'; else if (actionBtnMedia) actionBtnMedia.style.display = 'none';
 
 
-            if (item.meanings && item.meanings.length > 0) { item.meanings.forEach((mObj, idx) => { const meaningBlockDiv = document.createElement('div'); meaningBlockDiv.className = `meaning-block-on-card ${idx > 0 ? "mt-4 pt-3 border-t border-blue-400 border-opacity-50" : (item.meanings.length > 1 ? "bg-black bg-opacity-10 p-3 rounded-lg" : "") }`; const meaningTextP = document.createElement('p'); meaningTextP.className = "meaning-text-on-card"; if (item.meanings.length > 1) { meaningTextP.textContent = `${idx + 1}. ${mObj.text}`; } else { meaningTextP.textContent = mObj.text; } meaningBlockDiv.appendChild(meaningTextP); if (mObj.notes) { const meaningNotesP = document.createElement('p'); meaningNotesP.className = "meaning-notes-on-card"; meaningNotesP.textContent = mObj.notes; meaningBlockDiv.appendChild(meaningNotesP); } if (mObj.examples && mObj.examples.length > 0) { const examplesContainer = document.createElement('div'); examplesContainer.className = "ml-3 mt-3"; const examplesListDiv = document.createElement('div'); examplesListDiv.className = "space-y-1.5"; examplesListDiv.dataset.meaningId = mObj.id; const maxVisibleExamples = 1; const totalExamples = mObj.examples.length; mObj.examples.forEach((ex, exIdx) => { const exD = document.createElement('div'); exD.className="example-item-on-card"; if (exIdx >= maxVisibleExamples) { exD.classList.add('hidden'); } const eP = document.createElement('p'); eP.className="example-eng-on-card"; const textSpan = document.createElement('span'); const enLabel = document.createElement('span'); enLabel.className = 'example-label'; enLabel.textContent = 'EN: '; textSpan.appendChild(enLabel); textSpan.appendChild(document.createTextNode(ex.eng)); eP.appendChild(textSpan); const copyBtn = document.createElement('button'); copyBtn.className = 'copy-example-btn'; copyBtn.title = 'Sao chép ví dụ'; const initialCopySvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" /></svg>`; const copiedSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`; copyBtn.innerHTML = initialCopySvg; copyBtn.onclick = (e) => { e.stopPropagation(); navigator.clipboard.writeText(ex.eng).then(() => { copyBtn.innerHTML = copiedSvg; setTimeout(() => { copyBtn.innerHTML = initialCopySvg; }, 1500); }).catch(err => { console.error('Không thể sao chép: ', err); }); }; eP.appendChild(copyBtn); exD.appendChild(eP); if(ex.vie){ const vP = document.createElement('p');vP.className="example-vie-on-card";const vnLabel = document.createElement('span');vnLabel.className = 'example-label';vnLabel.textContent = 'VN: ';vP.appendChild(vnLabel);vP.appendChild(document.createTextNode(`(${ex.vie})`));exD.appendChild(vP); } if(ex.exampleNotes){ const nP=document.createElement('p');nP.className="example-notes-on-card";nP.textContent=`Ghi chú VD: ${ex.exampleNotes}`;exD.appendChild(nP); } examplesListDiv.appendChild(exD); }); examplesContainer.appendChild(examplesListDiv); if (totalExamples > maxVisibleExamples) { const toggleExamplesBtn = document.createElement('button'); toggleExamplesBtn.className = "toggle-examples-btn"; let hiddenCount = totalExamples - maxVisibleExamples; toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`; toggleExamplesBtn.dataset.expanded = "false"; toggleExamplesBtn.onclick = (e) => { e.stopPropagation(); const isExpanded = toggleExamplesBtn.dataset.expanded === "true"; const exampleItems = examplesListDiv.querySelectorAll('.example-item-on-card'); exampleItems.forEach((item, itemIdx) => { if (itemIdx >= maxVisibleExamples) { item.classList.toggle('hidden', isExpanded); } }); if (isExpanded) { toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`; toggleExamplesBtn.dataset.expanded = "false"; } else { toggleExamplesBtn.textContent = "Ẩn bớt ví dụ"; toggleExamplesBtn.dataset.expanded = "true"; } }; examplesContainer.appendChild(toggleExamplesBtn); } meaningBlockDiv.appendChild(examplesContainer); } if(meaningDisplayContainer) meaningDisplayContainer.appendChild(meaningBlockDiv); }); }
-                else if(meaningDisplayContainer) meaningDisplayContainer.innerHTML = '<p class="text-slate-400 italic">Chưa có nghĩa.</p>';
+            if (item.meanings && item.meanings.length > 0) {
+                item.meanings.forEach((mObj, idx) => {
+                    const meaningBlockDiv = document.createElement('div');
+                    meaningBlockDiv.className = `meaning-block-on-card ${idx > 0 ? "mt-4 pt-3 border-t border-blue-400 border-opacity-50" : (item.meanings.length > 1 ? "bg-black bg-opacity-10 p-3 rounded-lg" : "") }`;
+                    const meaningTextP = document.createElement('p');
+                    meaningTextP.className = "meaning-text-on-card";
+                    if (item.meanings.length > 1) {
+                        meaningTextP.textContent = `${idx + 1}. ${mObj.text}`;
+                    } else {
+                        meaningTextP.textContent = mObj.text;
+                    }
+                    meaningBlockDiv.appendChild(meaningTextP);
 
-                const notesSectionEl = document.getElementById('notes-section');
-                if (item.generalNotes) { if(notesDisplay) notesDisplay.innerHTML = `Ghi chú chung: ${item.generalNotes}`; if(notesSectionEl) notesSectionEl.style.display = 'block'; }
-                else { if(notesDisplay) notesDisplay.innerHTML = ''; if(notesSectionEl) notesSectionEl.style.display = 'none'; }
+                    if (mObj.notes) {
+                        const meaningNotesP = document.createElement('p');
+                        meaningNotesP.className = "meaning-notes-on-card";
+                        meaningNotesP.textContent = mObj.notes;
+                        meaningBlockDiv.appendChild(meaningNotesP);
+                    }
 
-                if(speakerBtn) speakerBtn.disabled = !textForTTS.trim() || (practiceType === 'word_quiz');
-                const hasExamplesToSpeak = item.meanings && item.meanings.some(m => m.examples && m.examples.some(ex => ex.eng.trim()));
-                if(speakerExampleBtn) speakerExampleBtn.disabled = !hasExamplesToSpeak;
-                updateStatusButtonsUI();
+                    if (mObj.examples && mObj.examples.length > 0) {
+                        const examplesContainer = document.createElement('div');
+                        examplesContainer.className = "ml-3 mt-3";
+                        const examplesListDiv = document.createElement('div');
+                        examplesListDiv.className = "space-y-1.5";
+                        examplesListDiv.dataset.meaningId = mObj.id;
+
+                        const maxVisibleExamples = 1;
+                        const totalExamples = mObj.examples.length;
+
+                        mObj.examples.forEach((ex, exIdx) => {
+                            const exD = document.createElement('div');
+                            exD.className="example-item-on-card";
+                            if (exIdx >= maxVisibleExamples) {
+                                exD.classList.add('hidden');
+                            }
+
+                            const eP = document.createElement('p');
+                            eP.className="example-eng-on-card";
+
+                            const textSpan = document.createElement('span');
+                            textSpan.className = 'text-content'; // Để chứa text và label
+                            const enLabel = document.createElement('span');
+                            enLabel.className = 'example-label';
+                            enLabel.textContent = 'EN: ';
+                            textSpan.appendChild(enLabel);
+                            textSpan.appendChild(document.createTextNode(ex.eng));
+                            eP.appendChild(textSpan);
+
+                            // --- START: Thêm nút Play cho từng ví dụ ---
+                            if (ex.eng && ex.eng.trim()) {
+                                const playSingleExBtn = document.createElement('button');
+                                playSingleExBtn.className = 'speak-single-example-btn text-sky-300 hover:text-sky-100 p-1 transition-colors duration-150'; // Thêm class Tailwind
+                                playSingleExBtn.innerHTML = '<i class="fas fa-play"></i>';
+                                playSingleExBtn.title = 'Phát âm ví dụ này';
+                                playSingleExBtn.dataset.textToSpeak = ex.eng.trim();
+                                playSingleExBtn.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    const text = e.currentTarget.dataset.textToSpeak;
+                                    if (text) {
+                                        speakText(text);
+                                    }
+                                });
+                                eP.appendChild(playSingleExBtn); // Thêm vào sau text
+                            }
+                            // --- END: Thêm nút Play cho từng ví dụ ---
+
+                            const copyBtn = document.createElement('button');
+                            copyBtn.className = 'copy-example-btn';
+                            copyBtn.title = 'Sao chép ví dụ';
+                            const initialCopySvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" /></svg>`;
+                            const copiedSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
+                            copyBtn.innerHTML = initialCopySvg;
+                            copyBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(ex.eng).then(() => {
+                                    copyBtn.innerHTML = copiedSvg;
+                                    setTimeout(() => { copyBtn.innerHTML = initialCopySvg; }, 1500);
+                                }).catch(err => {
+                                    console.error('Không thể sao chép: ', err);
+                                    showToast('Lỗi sao chép vào clipboard!', 2000, 'error');
+                                });
+                            };
+                            eP.appendChild(copyBtn);
+                            exD.appendChild(eP);
+
+                            if(ex.vie){
+                                const vP = document.createElement('p');
+                                vP.className="example-vie-on-card";
+                                const vnLabel = document.createElement('span');
+                                vnLabel.className = 'example-label';
+                                vnLabel.textContent = 'VN: ';
+                                vP.appendChild(vnLabel);
+                                vP.appendChild(document.createTextNode(`(${ex.vie})`));
+                                exD.appendChild(vP);
+                            }
+                            if(ex.exampleNotes){
+                                const nP=document.createElement('p');
+                                nP.className="example-notes-on-card";
+                                nP.textContent=`Ghi chú VD: ${ex.exampleNotes}`;
+                                exD.appendChild(nP);
+                            }
+                            examplesListDiv.appendChild(exD);
+                        });
+                        examplesContainer.appendChild(examplesListDiv);
+
+                        if (totalExamples > maxVisibleExamples) {
+                            const toggleExamplesBtn = document.createElement('button');
+                            toggleExamplesBtn.className = "toggle-examples-btn";
+                            let hiddenCount = totalExamples - maxVisibleExamples;
+                            toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`;
+                            toggleExamplesBtn.dataset.expanded = "false";
+                            toggleExamplesBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                const isExpanded = toggleExamplesBtn.dataset.expanded === "true";
+                                const exampleItems = examplesListDiv.querySelectorAll('.example-item-on-card');
+                                exampleItems.forEach((item, itemIdx) => {
+                                    if (itemIdx >= maxVisibleExamples) {
+                                        item.classList.toggle('hidden', isExpanded);
+                                    }
+                                });
+                                if (isExpanded) {
+                                    toggleExamplesBtn.textContent = `Xem thêm ${hiddenCount} ví dụ...`;
+                                    toggleExamplesBtn.dataset.expanded = "false";
+                                } else {
+                                    toggleExamplesBtn.textContent = "Ẩn bớt ví dụ";
+                                    toggleExamplesBtn.dataset.expanded = "true";
+                                }
+                            };
+                            examplesContainer.appendChild(toggleExamplesBtn);
+                        }
+                        meaningBlockDiv.appendChild(examplesContainer);
+                    }
+                    if(meaningDisplayContainer) meaningDisplayContainer.appendChild(meaningBlockDiv);
+                });
             }
-            updateCardInfo();
-            if (practiceType === 'off' && !isSingleCardPracticeMode) startLearningTimer();
-        };
+            else if(meaningDisplayContainer) meaningDisplayContainer.innerHTML = '<p class="text-slate-400 italic">Chưa có nghĩa.</p>';
 
-        function updateCardInfo(){
-            if(currentCardIndexDisplay) currentCardIndexDisplay.textContent = window.currentData.length > 0 ? window.currentIndex + 1 : 0;
-            if(totalCardsDisplay) totalCardsDisplay.textContent = window.currentData.length;
+            const notesSectionEl = document.getElementById('notes-section');
+            if (item.generalNotes) { if(notesDisplay) notesDisplay.innerHTML = `Ghi chú chung: ${item.generalNotes}`; if(notesSectionEl) notesSectionEl.style.display = 'block'; }
+            else { if(notesDisplay) notesDisplay.innerHTML = ''; if(notesSectionEl) notesSectionEl.style.display = 'none'; }
 
-            if (isSingleCardPracticeMode) {
-                if(prevBtn) prevBtn.style.display = 'none';
-                if(nextBtn) nextBtn.style.display = 'none';
-                if(flipBtn) flipBtn.style.display = 'none';
-                if(exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.style.display = 'inline-flex';
-            } else {
-                if(prevBtn) prevBtn.style.display = 'inline-flex';
-                if(nextBtn) nextBtn.style.display = 'inline-flex';
-                if(flipBtn) flipBtn.style.display = 'inline-flex';
-                if(exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.style.display = 'none';
+            if(speakerBtn) speakerBtn.disabled = !textForTTS.trim() || (practiceType === 'word_quiz');
+            // speakerExampleBtn đã bị ẩn, không cần cập nhật trạng thái disabled của nó nữa.
+            updateStatusButtonsUI();
+        }
+        updateCardInfo();
+        if (practiceType === 'off' && !isSingleCardPracticeMode) startLearningTimer();
+    };
 
-                if(prevBtn) prevBtn.disabled = window.currentIndex === 0 || window.currentData.length === 0;
-                let nextDisabled = (window.currentIndex >= window.currentData.length - 1 || window.currentData.length === 0);
-                if (practiceType !== "off") nextDisabled = nextDisabled || (!currentAnswerChecked && window.currentData.length > 0) || (window.currentData.length > 0 && window.currentIndex >= window.currentData.length - 1 && !currentAnswerChecked);
-                if (!learningCardNextButtonTimer && nextBtn) nextBtn.disabled = nextDisabled;
-                if (flipBtn) flipBtn.disabled = window.currentData.length === 0 || (practiceType !== "off");
+    function updateCardInfo(){
+        if(currentCardIndexDisplay) currentCardIndexDisplay.textContent = window.currentData.length > 0 ? window.currentIndex + 1 : 0;
+        if(totalCardsDisplay) totalCardsDisplay.textContent = window.currentData.length;
+
+        if (isSingleCardPracticeMode) {
+            if(prevBtn) prevBtn.style.display = 'none';
+            if(nextBtn) nextBtn.style.display = 'none';
+            if(flipBtn) flipBtn.style.display = 'none';
+            if(exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.style.display = 'inline-flex';
+        } else {
+            if(prevBtn) prevBtn.style.display = 'inline-flex';
+            if(nextBtn) nextBtn.style.display = 'inline-flex';
+            if(flipBtn) flipBtn.style.display = 'inline-flex';
+            if(exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.style.display = 'none';
+
+            if(prevBtn) prevBtn.disabled = window.currentIndex === 0 || window.currentData.length === 0;
+            let nextDisabled = (window.currentIndex >= window.currentData.length - 1 || window.currentData.length === 0);
+            if (practiceType !== "off") nextDisabled = nextDisabled || (!currentAnswerChecked && window.currentData.length > 0) || (window.currentData.length > 0 && window.currentIndex >= window.currentData.length - 1 && !currentAnswerChecked);
+            if (!learningCardNextButtonTimer && nextBtn) nextBtn.disabled = nextDisabled;
+            if (flipBtn) flipBtn.disabled = window.currentData.length === 0 || (practiceType !== "off");
+        }
+    }
+
+    function displayMultipleChoiceOptions() {
+        multipleChoiceOptionsContainer.innerHTML = '';
+        const sourceCard = isSingleCardPracticeMode ? originalCurrentData[originalCurrentIndex] : window.currentData[window.currentIndex];
+
+        if (!sourceCard) {
+            multipleChoiceOptionsContainer.innerHTML = '<p class="text-slate-500 italic col-span-full">Không có thẻ để luyện tập.</p>';
+            return;
+        }
+
+        let questionText = '';
+        let correctAnswerText = '';
+        let options = [];
+        const numberOfOptions = 4;
+
+        if (practiceType === 'meaning_quiz') {
+            questionText = sourceCard.category === 'phrasalVerbs' ? sourceCard.phrasalVerb : (sourceCard.category === 'collocations' ? sourceCard.collocation : sourceCard.word);
+            correctAnswerText = sourceCard.meanings[0].text;
+            options.push(correctAnswerText);
+
+            let wrongOptionsCount = 0;
+            const otherCards = activeMasterList.filter(card =>
+                card.category === sourceCard.category &&
+                getCardIdentifier(card) !== getCardIdentifier(sourceCard) &&
+                card.meanings && card.meanings.length > 0 && card.meanings[0].text
+            );
+            shuffleArray(otherCards);
+            for (const otherCard of otherCards) {
+                if (wrongOptionsCount < (numberOfOptions - 1) && otherCard.meanings[0].text !== correctAnswerText) {
+                    options.push(otherCard.meanings[0].text);
+                    wrongOptionsCount++;
+                }
+                if (wrongOptionsCount >= (numberOfOptions - 1)) break;
+            }
+        } else if (practiceType === 'word_quiz') {
+            questionText = sourceCard.meanings[0].text;
+            correctAnswerText = sourceCard.category === 'phrasalVerbs' ? sourceCard.phrasalVerb : (sourceCard.category === 'collocations' ? sourceCard.collocation : sourceCard.word);
+            options.push(correctAnswerText);
+
+            let wrongOptionsCount = 0;
+            const otherCards = activeMasterList.filter(card =>
+                card.category === sourceCard.category &&
+                getCardIdentifier(card) !== getCardIdentifier(sourceCard)
+            );
+            shuffleArray(otherCards);
+            for (const otherCard of otherCards) {
+                const wrongOption = otherCard.category === 'phrasalVerbs' ? otherCard.phrasalVerb : (otherCard.category === 'collocations' ? otherCard.collocation : otherCard.word);
+                if (wrongOptionsCount < (numberOfOptions - 1) && wrongOption !== correctAnswerText) {
+                    options.push(wrongOption);
+                    wrongOptionsCount++;
+                }
+                if (wrongOptionsCount >= (numberOfOptions - 1)) break;
             }
         }
 
-        function displayMultipleChoiceOptions() {
-            multipleChoiceOptionsContainer.innerHTML = '';
-            const sourceCard = isSingleCardPracticeMode ? originalCurrentData[originalCurrentIndex] : window.currentData[window.currentIndex];
+        let dummyOptionIndex = 1;
+        while (options.length < Math.min(numberOfOptions, activeMasterList.filter(c => c.category === sourceCard.category).length) && options.length > 0 && options.length < numberOfOptions) {
+             options.push(`Lựa chọn sai ${dummyOptionIndex++}`);
+        }
+         while (options.length < 2 && options.length > 0) { // Đảm bảo ít nhất 2 lựa chọn nếu có thể
+            options.push(`Lựa chọn sai ${dummyOptionIndex++}`);
+        }
 
-            if (!sourceCard) {
-                multipleChoiceOptionsContainer.innerHTML = '<p class="text-slate-500 italic col-span-full">Không có thẻ để luyện tập.</p>';
-                return;
-            }
 
-            let questionText = '';
-            let correctAnswerText = '';
-            let options = [];
-            const numberOfOptions = 4;
+        options = shuffleArray(options);
 
-            if (practiceType === 'meaning_quiz') {
-                questionText = sourceCard.category === 'phrasalVerbs' ? sourceCard.phrasalVerb : (sourceCard.category === 'collocations' ? sourceCard.collocation : sourceCard.word);
-                correctAnswerText = sourceCard.meanings[0].text;
-                options.push(correctAnswerText);
+        options.forEach(optionText => {
+            const button = document.createElement('button');
+            button.className = 'choice-button';
+            button.textContent = optionText;
+            button.addEventListener('click', () => checkMultipleChoiceAnswer(optionText, correctAnswerText, button));
+            multipleChoiceOptionsContainer.appendChild(button);
+        });
+    }
 
-                let wrongOptionsCount = 0;
-                const otherCards = activeMasterList.filter(card =>
-                    card.category === sourceCard.category &&
-                    getCardIdentifier(card) !== getCardIdentifier(sourceCard) &&
-                    card.meanings && card.meanings.length > 0 && card.meanings[0].text
-                );
-                shuffleArray(otherCards);
-                for (const otherCard of otherCards) {
-                    if (wrongOptionsCount < (numberOfOptions - 1) && otherCard.meanings[0].text !== correctAnswerText) {
-                        options.push(otherCard.meanings[0].text);
-                        wrongOptionsCount++;
-                    }
-                    if (wrongOptionsCount >= (numberOfOptions - 1)) break;
+    function checkMultipleChoiceAnswer(selectedAnswer, correctAnswer, buttonElement) {
+        currentAnswerChecked = true;
+        feedbackMessage.classList.remove('hidden');
+        const allChoiceButtons = multipleChoiceOptionsContainer.querySelectorAll('.choice-button');
+        allChoiceButtons.forEach(btn => btn.disabled = true);
+
+        const isCorrect = selectedAnswer === correctAnswer;
+
+        if (isCorrect) {
+            buttonElement.classList.add('correct');
+            feedbackMessage.textContent = 'Chính xác!';
+            feedbackMessage.className = 'mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300';
+        } else {
+            buttonElement.classList.add('incorrect');
+            feedbackMessage.textContent = `Không đúng! Đáp án là: ${correctAnswer}`;
+            feedbackMessage.className = 'mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300';
+            allChoiceButtons.forEach(btn => {
+                if (btn.textContent === correctAnswer) {
+                    btn.classList.add('correct');
                 }
-            } else if (practiceType === 'word_quiz') {
-                questionText = sourceCard.meanings[0].text;
-                correctAnswerText = sourceCard.category === 'phrasalVerbs' ? sourceCard.phrasalVerb : (sourceCard.category === 'collocations' ? sourceCard.collocation : sourceCard.word);
-                options.push(correctAnswerText);
-
-                let wrongOptionsCount = 0;
-                const otherCards = activeMasterList.filter(card =>
-                    card.category === sourceCard.category &&
-                    getCardIdentifier(card) !== getCardIdentifier(sourceCard)
-                );
-                shuffleArray(otherCards);
-                for (const otherCard of otherCards) {
-                    const wrongOption = otherCard.category === 'phrasalVerbs' ? otherCard.phrasalVerb : (otherCard.category === 'collocations' ? otherCard.collocation : otherCard.word);
-                    if (wrongOptionsCount < (numberOfOptions - 1) && wrongOption !== correctAnswerText) {
-                        options.push(wrongOption);
-                        wrongOptionsCount++;
-                    }
-                    if (wrongOptionsCount >= (numberOfOptions - 1)) break;
-                }
-            }
-
-            let dummyOptionIndex = 1;
-            while (options.length < Math.min(numberOfOptions, activeMasterList.filter(c => c.category === sourceCard.category).length) && options.length > 0 && options.length < numberOfOptions) {
-                 options.push(`Lựa chọn sai ${dummyOptionIndex++}`);
-            }
-             while (options.length < 2 && options.length > 0) {
-                options.push(`Lựa chọn sai ${dummyOptionIndex++}`);
-            }
-
-
-            options = shuffleArray(options);
-
-            options.forEach(optionText => {
-                const button = document.createElement('button');
-                button.className = 'choice-button';
-                button.textContent = optionText;
-                button.addEventListener('click', () => checkMultipleChoiceAnswer(optionText, correctAnswerText, button));
-                multipleChoiceOptionsContainer.appendChild(button);
             });
         }
 
-        function checkMultipleChoiceAnswer(selectedAnswer, correctAnswer, buttonElement) {
-            currentAnswerChecked = true;
-            feedbackMessage.classList.remove('hidden');
-            const allChoiceButtons = multipleChoiceOptionsContainer.querySelectorAll('.choice-button');
-            allChoiceButtons.forEach(btn => btn.disabled = true);
+        flashcardElement.classList.remove('practice-mode-front-only');
+        flashcardElement.classList.add('flipped');
 
-            const isCorrect = selectedAnswer === correctAnswer;
+        processSrsRatingWrapper(isCorrect ? 'easy' : 'again');
+        updateCardInfo();
+    }
 
-            if (isCorrect) {
-                buttonElement.classList.add('correct');
-                feedbackMessage.textContent = 'Chính xác!';
-                feedbackMessage.className = 'mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300';
-            } else {
-                buttonElement.classList.add('incorrect');
-                feedbackMessage.textContent = `Không đúng! Đáp án là: ${correctAnswer}`;
-                feedbackMessage.className = 'mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300';
-                allChoiceButtons.forEach(btn => {
-                    if (btn.textContent === correctAnswer) {
-                        btn.classList.add('correct');
-                    }
-                });
-            }
+    function switchToInputMode(mode) {
+        currentInputMode = mode;
+        clearAllFormErrors();
+        if (mode === 'json') {
+            addEditCardForm.style.display = 'none';
+            jsonInputArea.style.display = 'block';
+            document.getElementById('json-deck-assignment-container').style.display = 'block';
+            modalDeckAssignmentContainer.style.display = 'none';
 
-            flashcardElement.classList.remove('practice-mode-front-only');
-            flashcardElement.classList.add('flipped');
-
-            processSrsRatingWrapper(isCorrect ? 'easy' : 'again');
-            updateCardInfo();
-        }
-
-        function switchToInputMode(mode) {
-            currentInputMode = mode;
-            clearAllFormErrors();
-            if (mode === 'json') {
-                addEditCardForm.style.display = 'none';
-                jsonInputArea.style.display = 'block';
-                document.getElementById('json-deck-assignment-container').style.display = 'block';
-                modalDeckAssignmentContainer.style.display = 'none';
-
-                saveCardBtn.style.display = 'none';
-                processJsonBtn.style.display = 'inline-flex';
-                manualInputModeBtn.classList.remove('active');
-                jsonInputModeBtn.classList.add('active');
-                modalTitle.textContent = 'Nhập thẻ từ JSON';
-                cardJsonInput.value = '';
-                jsonImportErrorMessage.classList.add('hidden');
-                jsonImportSuccessMessage.classList.add('hidden');
-                jsonCardDeckAssignmentSelect.value = cardDeckAssignmentSelect.value;
-
-            } else {
-                addEditCardForm.style.display = 'block';
-                jsonInputArea.style.display = 'none';
-                document.getElementById('json-deck-assignment-container').style.display = 'none';
-                if (cardSourceSelect.value === 'user') {
-                     modalDeckAssignmentContainer.style.display = 'block';
-                } else {
-                     modalDeckAssignmentContainer.style.display = 'none';
-                }
-
-                saveCardBtn.style.display = 'inline-flex';
-                processJsonBtn.style.display = 'none';
-                manualInputModeBtn.classList.add('active');
-                jsonInputModeBtn.classList.remove('active');
-                modalTitle.textContent = currentEditingCardId ? 'Sửa thẻ' : 'Thêm thẻ mới';
-                cardDeckAssignmentSelect.value = jsonCardDeckAssignmentSelect.value;
-            }
-        }
-
-        async function processAndSaveJsonCards() {
-            const userId = getCurrentUserId();
-            if (!userId) {
-                jsonImportErrorMessage.textContent = "Vui lòng đăng nhập để tạo thẻ từ JSON.";
-                jsonImportErrorMessage.classList.remove('hidden');
-                openAuthModalFromAuth('login');
-                return;
-            }
-
-            const jsonString = cardJsonInput.value.trim();
-            if (!jsonString) {
-                jsonImportErrorMessage.textContent = "Vui lòng dán mã JSON vào ô nhập liệu.";
-                jsonImportErrorMessage.classList.remove('hidden');
-                return;
-            }
-
-            const selectedDeckId = jsonCardDeckAssignmentSelect.value;
-            if (!selectedDeckId) {
-                jsonImportErrorMessage.textContent = "Vui lòng chọn một bộ thẻ để gán các thẻ này vào.";
-                jsonImportErrorMessage.classList.remove('hidden');
-                return;
-            }
-
+            saveCardBtn.style.display = 'none';
+            processJsonBtn.style.display = 'inline-flex';
+            manualInputModeBtn.classList.remove('active');
+            jsonInputModeBtn.classList.add('active');
+            modalTitle.textContent = 'Nhập thẻ từ JSON';
+            cardJsonInput.value = '';
             jsonImportErrorMessage.classList.add('hidden');
             jsonImportSuccessMessage.classList.add('hidden');
-            processJsonBtn.disabled = true;
-            processJsonBtn.textContent = 'Đang xử lý...';
+            jsonCardDeckAssignmentSelect.value = cardDeckAssignmentSelect.value;
 
-            let cardsToProcess;
-            try {
-                const parsedData = JSON.parse(jsonString);
-                if (Array.isArray(parsedData)) {
-                    cardsToProcess = parsedData;
-                } else if (typeof parsedData === 'object' && parsedData !== null) {
-                    cardsToProcess = [parsedData];
-                } else {
-                    throw new Error("Cấu trúc JSON không hợp lệ. Cần một đối tượng thẻ hoặc một mảng các đối tượng thẻ.");
-                }
-            } catch (error) {
-                console.error("Lỗi parse JSON:", error);
-                jsonImportErrorMessage.textContent = `Lỗi parse JSON: ${error.message}`;
-                jsonImportErrorMessage.classList.remove('hidden');
-                processJsonBtn.disabled = false;
-                processJsonBtn.textContent = 'Xử lý JSON & Tạo Thẻ';
-                return;
+        } else {
+            addEditCardForm.style.display = 'block';
+            jsonInputArea.style.display = 'none';
+            document.getElementById('json-deck-assignment-container').style.display = 'none';
+            if (cardSourceSelect.value === 'user') {
+                 modalDeckAssignmentContainer.style.display = 'block';
+            } else {
+                 modalDeckAssignmentContainer.style.display = 'none';
             }
 
-            let successCount = 0;
-            let errorCount = 0;
-            let errorMessages = [];
+            saveCardBtn.style.display = 'inline-flex';
+            processJsonBtn.style.display = 'none';
+            manualInputModeBtn.classList.add('active');
+            jsonInputModeBtn.classList.remove('active');
+            modalTitle.textContent = currentEditingCardId ? 'Sửa thẻ' : 'Thêm thẻ mới';
+            cardDeckAssignmentSelect.value = jsonCardDeckAssignmentSelect.value;
+        }
+    }
 
-            for (const cardJson of cardsToProcess) {
-                let mainTerm = cardJson.word || cardJson.phrasalVerb || cardJson.collocation || 'Thẻ không tên';
-                if (!cardJson.category ||
-                    !mainTerm ||
-                    !Array.isArray(cardJson.meanings) || cardJson.meanings.length === 0 ||
-                    !cardJson.meanings[0].text
-                ) {
-                    errorCount++;
-                    errorMessages.push(`Thẻ "${mainTerm}" thiếu thông tin bắt buộc (category, từ/cụm từ, hoặc nghĩa chính).`);
-                    continue;
-                }
+    async function processAndSaveJsonCards() {
+        const userId = getCurrentUserId();
+        if (!userId) {
+            jsonImportErrorMessage.textContent = "Vui lòng đăng nhập để tạo thẻ từ JSON.";
+            jsonImportErrorMessage.classList.remove('hidden');
+            openAuthModalFromAuth('login');
+            return;
+        }
 
-                const cardDataToSave = {
-                    pronunciation: cardJson.pronunciation || '',
-                    meanings: cardJson.meanings.map(m => ({
-                        id: m.id || generateUniqueId('m_json_'),
-                        text: m.text || '',
-                        notes: m.notes || '',
-                        examples: Array.isArray(m.examples) ? m.examples.map(ex => ({
-                            id: ex.id || generateUniqueId('ex_json_'),
-                            eng: ex.eng || '',
-                            vie: ex.vie || '',
-                            exampleNotes: ex.exampleNotes || ''
-                        })) : []
-                    })),
-                    generalNotes: cardJson.generalNotes || '',
-                    videoUrl: cardJson.videoUrl || null,
-                    category: cardJson.category,
-                    deckId: selectedDeckId,
-                    status: 'new',
-                    lastReviewed: null,
-                    reviewCount: 0,
-                    nextReviewDate: serverTimestamp(),
-                    interval: 0,
-                    easeFactor: 2.5,
-                    repetitions: 0,
-                    isSuspended: false,
-                    isUserCard: true,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                };
+        const jsonString = cardJsonInput.value.trim();
+        if (!jsonString) {
+            jsonImportErrorMessage.textContent = "Vui lòng dán mã JSON vào ô nhập liệu.";
+            jsonImportErrorMessage.classList.remove('hidden');
+            return;
+        }
 
-                if (cardJson.category === 'phrasalVerbs') {
-                    cardDataToSave.phrasalVerb = cardJson.phrasalVerb;
-                    cardDataToSave.baseVerb = cardJson.baseVerb || null;
-                    cardDataToSave.tags = Array.isArray(cardJson.tags) ? cardJson.tags.map(t => String(t).trim().toLowerCase()).filter(t => t) : [];
-                } else if (cardJson.category === 'collocations') {
-                    cardDataToSave.collocation = cardJson.collocation;
-                    cardDataToSave.baseVerb = cardJson.baseVerb || null;
-                    cardDataToSave.tags = Array.isArray(cardJson.tags) ? cardJson.tags.map(t => String(t).trim().toLowerCase()).filter(t => t) : [];
-                } else {
-                    cardDataToSave.word = cardJson.word;
-                     cardDataToSave.tags = Array.isArray(cardJson.tags) ? cardJson.tags.map(t => String(t).trim().toLowerCase()).filter(t => t) : [];
-                }
+        const selectedDeckId = jsonCardDeckAssignmentSelect.value;
+        if (!selectedDeckId) {
+            jsonImportErrorMessage.textContent = "Vui lòng chọn một bộ thẻ để gán các thẻ này vào.";
+            jsonImportErrorMessage.classList.remove('hidden');
+            return;
+        }
 
-                const savedCardId = await FirestoreService.saveCardToFirestore(userId, selectedDeckId, cardDataToSave);
-                if (savedCardId) {
-                    successCount++;
-                } else {
-                    errorCount++;
-                    errorMessages.push(`Lỗi lưu thẻ "${mainTerm}" vào Firestore.`);
-                }
+        jsonImportErrorMessage.classList.add('hidden');
+        jsonImportSuccessMessage.classList.add('hidden');
+        processJsonBtn.disabled = true;
+        processJsonBtn.textContent = 'Đang xử lý...';
+
+        let cardsToProcess;
+        try {
+            const parsedData = JSON.parse(jsonString);
+            if (Array.isArray(parsedData)) {
+                cardsToProcess = parsedData;
+            } else if (typeof parsedData === 'object' && parsedData !== null) {
+                cardsToProcess = [parsedData];
+            } else {
+                throw new Error("Cấu trúc JSON không hợp lệ. Cần một đối tượng thẻ hoặc một mảng các đối tượng thẻ.");
             }
-
+        } catch (error) {
+            console.error("Lỗi parse JSON:", error);
+            jsonImportErrorMessage.textContent = `Lỗi parse JSON: ${error.message}`;
+            jsonImportErrorMessage.classList.remove('hidden');
             processJsonBtn.disabled = false;
             processJsonBtn.textContent = 'Xử lý JSON & Tạo Thẻ';
-
-            if (successCount > 0) {
-                jsonImportSuccessMessage.textContent = `Đã thêm thành công ${successCount} thẻ.`;
-                jsonImportSuccessMessage.classList.remove('hidden');
-            }
-            if (errorCount > 0) {
-                jsonImportErrorMessage.textContent = `Không thể thêm ${errorCount} thẻ. Lỗi: ${errorMessages.join('; ')}`;
-                jsonImportErrorMessage.classList.remove('hidden');
-            }
-
-            if (successCount > 0) {
-                await loadVocabularyData(categorySelect.value);
-            }
+            return;
         }
 
-        function openCopyToDeckModal() {
-            const currentCard = window.currentData[window.currentIndex];
-            if (!currentCard || currentCard.isUserCard) {
-                console.warn("Không thể sao chép thẻ này (không phải thẻ web hoặc không có thẻ).");
-                return;
-            }
-            if (!getCurrentUserId()) {
-                alert("Vui lòng đăng nhập để sao chép thẻ.");
-                openAuthModalFromAuth('login');
-                return;
-            }
+        let successCount = 0;
+        let errorCount = 0;
+        let errorMessages = [];
 
-            populateDeckSelects();
-            copyNewDeckNameContainer.style.display = 'none';
-            copyNewDeckNameInput.value = '';
-            copyNewDeckError.classList.add('hidden');
-            copyToDeckErrorMessage.classList.add('hidden');
-            copyToDeckSuccessMessage.classList.add('hidden');
-            copyToDeckSelect.value = '';
-
-            copyToDeckModal.classList.remove('hidden', 'opacity-0');
-            copyToDeckModal.querySelector('.modal-content').classList.remove('scale-95');
-            copyToDeckModal.querySelector('.modal-content').classList.add('scale-100');
-        }
-
-        function closeCopyToDeckModal() {
-            copyToDeckModal.classList.add('opacity-0');
-            copyToDeckModal.querySelector('.modal-content').classList.add('scale-95');
-            setTimeout(() => copyToDeckModal.classList.add('hidden'), 250);
-        }
-
-        async function handleConfirmCopyToDeck() {
-            const currentCard = window.currentData[window.currentIndex];
-            if (!currentCard || currentCard.isUserCard) {
-                copyToDeckErrorMessage.textContent = "Thẻ hiện tại không phải là thẻ web để sao chép.";
-                copyToDeckErrorMessage.classList.remove('hidden');
-                return;
+        for (const cardJson of cardsToProcess) {
+            let mainTerm = cardJson.word || cardJson.phrasalVerb || cardJson.collocation || 'Thẻ không tên';
+            if (!cardJson.category ||
+                !mainTerm ||
+                !Array.isArray(cardJson.meanings) || cardJson.meanings.length === 0 ||
+                !cardJson.meanings[0].text
+            ) {
+                errorCount++;
+                errorMessages.push(`Thẻ "${mainTerm}" thiếu thông tin bắt buộc (category, từ/cụm từ, hoặc nghĩa chính).`);
+                continue;
             }
 
-            const userId = getCurrentUserId();
-            if (!userId) {
-                copyToDeckErrorMessage.textContent = "Vui lòng đăng nhập.";
-                copyToDeckErrorMessage.classList.remove('hidden');
-                openAuthModalFromAuth('login');
-                return;
-            }
+            const cardDataToSave = {
+                pronunciation: cardJson.pronunciation || '',
+                meanings: cardJson.meanings.map(m => ({
+                    id: m.id || generateUniqueId('m_json_'),
+                    text: m.text || '',
+                    notes: m.notes || '',
+                    examples: Array.isArray(m.examples) ? m.examples.map(ex => ({
+                        id: ex.id || generateUniqueId('ex_json_'),
+                        eng: ex.eng || '',
+                        vie: ex.vie || '',
+                        exampleNotes: ex.exampleNotes || ''
+                    })) : []
+                })),
+                generalNotes: cardJson.generalNotes || '',
+                videoUrl: cardJson.videoUrl || null,
+                category: cardJson.category,
+                deckId: selectedDeckId,
+                status: 'new',
+                lastReviewed: null,
+                reviewCount: 0,
+                nextReviewDate: serverTimestamp(),
+                interval: 0,
+                easeFactor: 2.5,
+                repetitions: 0,
+                isSuspended: false,
+                isUserCard: true,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
 
-            let targetDeckId = copyToDeckSelect.value;
-            let newDeckName = copyNewDeckNameInput.value.trim();
-
-            copyToDeckErrorMessage.classList.add('hidden');
-            copyToDeckSuccessMessage.classList.add('hidden');
-            copyNewDeckError.classList.add('hidden');
-
-            if (targetDeckId === "_create_new_deck_") {
-                if (!newDeckName) {
-                    copyNewDeckError.textContent = "Vui lòng nhập tên cho bộ thẻ mới.";
-                    copyNewDeckError.classList.remove('hidden');
-                    return;
-                }
-                const createdDeck = await createDeck(newDeckName);
-                if (createdDeck && createdDeck.id) {
-                    targetDeckId = createdDeck.id;
-                    await loadUserDecks();
-                    copyToDeckSelect.value = targetDeckId;
-                    populateDeckSelects();
-                } else {
-                    copyNewDeckError.textContent = "Không thể tạo bộ thẻ mới. Vui lòng thử lại.";
-                    copyNewDeckError.classList.remove('hidden');
-                    return;
-                }
-            } else if (!targetDeckId) {
-                copyToDeckErrorMessage.textContent = "Vui lòng chọn một bộ thẻ đích hoặc tạo bộ thẻ mới.";
-                copyToDeckErrorMessage.classList.remove('hidden');
-                return;
-            }
-
-            const cardToCopy = { ...currentCard };
-            delete cardToCopy.id;
-            cardToCopy.isUserCard = true;
-            cardToCopy.deckId = targetDeckId;
-            cardToCopy.status = 'new';
-            cardToCopy.lastReviewed = null;
-            cardToCopy.reviewCount = 0;
-            cardToCopy.nextReviewDate = serverTimestamp();
-            cardToCopy.interval = 0;
-            cardToCopy.easeFactor = 2.5;
-            cardToCopy.repetitions = 0;
-            cardToCopy.isSuspended = false;
-            cardToCopy.videoUrl = currentCard.videoUrl || null;
-            cardToCopy.createdAt = serverTimestamp();
-            cardToCopy.updatedAt = serverTimestamp();
-
-            delete cardToCopy.webCardGlobalId;
-
-            const newCardId = await FirestoreService.saveCardToFirestore(userId, targetDeckId, cardToCopy);
-
-            if (newCardId) {
-                console.log("Web card copied to user deck. New card ID:", newCardId);
-                copyToDeckSuccessMessage.textContent = `Đã sao chép thẻ "${cardToCopy.word || cardToCopy.phrasalVerb || cardToCopy.collocation}" vào bộ thẻ đã chọn!`;
-                copyToDeckSuccessMessage.classList.remove('hidden');
-
-                setTimeout(async () => {
-                    closeCopyToDeckModal();
-                    if (cardSourceSelect.value === 'user' && userDeckSelect.value === targetDeckId) {
-                        await loadVocabularyData(categorySelect.value);
-                    }
-                }, 2000);
+            if (cardJson.category === 'phrasalVerbs') {
+                cardDataToSave.phrasalVerb = cardJson.phrasalVerb;
+                cardDataToSave.baseVerb = cardJson.baseVerb || null;
+                cardDataToSave.tags = Array.isArray(cardJson.tags) ? cardJson.tags.map(t => String(t).trim().toLowerCase()).filter(t => t) : [];
+            } else if (cardJson.category === 'collocations') {
+                cardDataToSave.collocation = cardJson.collocation;
+                cardDataToSave.baseVerb = cardJson.baseVerb || null;
+                cardDataToSave.tags = Array.isArray(cardJson.tags) ? cardJson.tags.map(t => String(t).trim().toLowerCase()).filter(t => t) : [];
             } else {
-                copyToDeckErrorMessage.textContent = "Lỗi khi sao chép thẻ. Vui lòng thử lại.";
-                copyToDeckErrorMessage.classList.remove('hidden');
+                cardDataToSave.word = cardJson.word;
+                 cardDataToSave.tags = Array.isArray(cardJson.tags) ? cardJson.tags.map(t => String(t).trim().toLowerCase()).filter(t => t) : [];
+            }
+
+            const savedCardId = await FirestoreService.saveCardToFirestore(userId, selectedDeckId, cardDataToSave);
+            if (savedCardId) {
+                successCount++;
+            } else {
+                errorCount++;
+                errorMessages.push(`Lỗi lưu thẻ "${mainTerm}" vào Firestore.`);
             }
         }
 
-        // *** SỬA LỖI: Đảm bảo tham số thứ ba là 'subView' ***
-        function openBottomSheet(cardItem, viewType = 'default', subView = 'youglish') {
-            if (!cardItem || !bottomSheetContent || !bottomSheetTitle || !bottomSheetOverlay || !bottomSheet) return;
+        processJsonBtn.disabled = false;
+        processJsonBtn.textContent = 'Xử lý JSON & Tạo Thẻ';
 
-            let hasActions = false;
-            bottomSheetContent.innerHTML = '';
-            const loggedIn = getCurrentUserId();
-            let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "Thẻ";
+        if (successCount > 0) {
+            jsonImportSuccessMessage.textContent = `Đã thêm thành công ${successCount} thẻ.`;
+            jsonImportSuccessMessage.classList.remove('hidden');
+        }
+        if (errorCount > 0) {
+            jsonImportErrorMessage.textContent = `Không thể thêm ${errorCount} thẻ. Lỗi: ${errorMessages.join('; ')}`;
+            jsonImportErrorMessage.classList.remove('hidden');
+        }
 
-            bottomSheet.classList.remove('bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
-            bottomSheet.style.paddingBottom = '';
-            if(bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none';
+        if (successCount > 0) {
+            await loadVocabularyData(categorySelect.value);
+        }
+    }
 
+    function openCopyToDeckModal() {
+        const currentCard = window.currentData[window.currentIndex];
+        if (!currentCard || currentCard.isUserCard) {
+            console.warn("Không thể sao chép thẻ này (không phải thẻ web hoặc không có thẻ).");
+            return;
+        }
+        if (!getCurrentUserId()) {
+            alert("Vui lòng đăng nhập để sao chép thẻ.");
+            openAuthModalFromAuth('login');
+            return;
+        }
 
-            if (viewType === 'default') {
-                bottomSheetTitle.textContent = `Tùy chọn cho: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
+        populateDeckSelects();
+        copyNewDeckNameContainer.style.display = 'none';
+        copyNewDeckNameInput.value = '';
+        copyNewDeckError.classList.add('hidden');
+        copyToDeckErrorMessage.classList.add('hidden');
+        copyToDeckSuccessMessage.classList.add('hidden');
+        copyToDeckSelect.value = '';
 
-                if (loggedIn && (cardItem.isUserCard || (cardItem.nextReviewDate || (cardItem.repetitions && cardItem.repetitions > 0) ))) {
-                    const srsInfoDiv = document.createElement('div');
-                    srsInfoDiv.className = 'text-xs text-slate-600 dark:text-slate-300 mb-3 p-3 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-700/50';
-                    let srsInfoHtml = '<h4 class="font-semibold text-sm mb-1 text-slate-700 dark:text-slate-100">Thông tin Ôn tập:</h4><ul class="list-inside space-y-0.5">';
-                    if (cardItem.nextReviewDate) {
-                        const nextReview = new Date(cardItem.nextReviewDate);
-                        const today = new Date(); today.setHours(0,0,0,0);
-                        const reviewDay = new Date(nextReview.getTime()); reviewDay.setHours(0,0,0,0);
-                        let reviewText = `Lần ôn tiếp theo: ${nextReview.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
-                        if (reviewDay <= today) reviewText += ' <span class="font-semibold text-amber-600 dark:text-amber-400">(Đến hạn)</span>';
-                        srsInfoHtml += `<li>${reviewText}</li>`;
-                    } else {
-                        srsInfoHtml += `<li>Lần ôn tiếp theo: Chưa có (thẻ mới)</li>`;
-                    }
-                    srsInfoHtml += `<li>Khoảng cách: ${cardItem.interval || 0} ngày</li>`;
-                    srsInfoHtml += `<li>Độ dễ: ${((cardItem.easeFactor || 2.5) * 100).toFixed(0)}%</li>`;
-                    srsInfoHtml += `<li>Ôn đúng liên tiếp: ${cardItem.repetitions || 0}</li>`;
-                    if (cardItem.isSuspended) {
-                        srsInfoHtml += `<li class="text-orange-500 font-semibold">Trạng thái: Đang tạm ngưng</li>`;
-                    }
-                    srsInfoHtml += '</ul>';
-                    srsInfoDiv.innerHTML = srsInfoHtml;
-                    bottomSheetContent.appendChild(srsInfoDiv);
-                    hasActions = true;
+        copyToDeckModal.classList.remove('hidden', 'opacity-0');
+        copyToDeckModal.querySelector('.modal-content').classList.remove('scale-95');
+        copyToDeckModal.querySelector('.modal-content').classList.add('scale-100');
+    }
+
+    function closeCopyToDeckModal() {
+        copyToDeckModal.classList.add('opacity-0');
+        copyToDeckModal.querySelector('.modal-content').classList.add('scale-95');
+        setTimeout(() => copyToDeckModal.classList.add('hidden'), 250);
+    }
+
+    async function handleConfirmCopyToDeck() {
+        const currentCard = window.currentData[window.currentIndex];
+        if (!currentCard || currentCard.isUserCard) {
+            copyToDeckErrorMessage.textContent = "Thẻ hiện tại không phải là thẻ web để sao chép.";
+            copyToDeckErrorMessage.classList.remove('hidden');
+            return;
+        }
+
+        const userId = getCurrentUserId();
+        if (!userId) {
+            copyToDeckErrorMessage.textContent = "Vui lòng đăng nhập.";
+            copyToDeckErrorMessage.classList.remove('hidden');
+            openAuthModalFromAuth('login');
+            return;
+        }
+
+        let targetDeckId = copyToDeckSelect.value;
+        let newDeckName = copyNewDeckNameInput.value.trim();
+
+        copyToDeckErrorMessage.classList.add('hidden');
+        copyToDeckSuccessMessage.classList.add('hidden');
+        copyNewDeckError.classList.add('hidden');
+
+        if (targetDeckId === "_create_new_deck_") {
+            if (!newDeckName) {
+                copyNewDeckError.textContent = "Vui lòng nhập tên cho bộ thẻ mới.";
+                copyNewDeckError.classList.remove('hidden');
+                return;
+            }
+            const createdDeck = await createDeck(newDeckName);
+            if (createdDeck && createdDeck.id) {
+                targetDeckId = createdDeck.id;
+                await loadUserDecks(); // Tải lại danh sách decks
+                copyToDeckSelect.value = targetDeckId; // Cập nhật select
+                populateDeckSelects(); // Cập nhật lại các select khác nếu cần
+            } else {
+                copyNewDeckError.textContent = "Không thể tạo bộ thẻ mới. Vui lòng thử lại.";
+                copyNewDeckError.classList.remove('hidden');
+                return;
+            }
+        } else if (!targetDeckId) {
+            copyToDeckErrorMessage.textContent = "Vui lòng chọn một bộ thẻ đích hoặc tạo bộ thẻ mới.";
+            copyToDeckErrorMessage.classList.remove('hidden');
+            return;
+        }
+
+        const cardToCopy = { ...currentCard };
+        delete cardToCopy.id; // Xóa ID cũ của thẻ web
+        cardToCopy.isUserCard = true;
+        cardToCopy.deckId = targetDeckId;
+        cardToCopy.status = 'new';
+        cardToCopy.lastReviewed = null; // Sẽ được đặt bởi serverTimestamp
+        cardToCopy.reviewCount = 0;
+        cardToCopy.nextReviewDate = serverTimestamp();
+        cardToCopy.interval = 0;
+        cardToCopy.easeFactor = 2.5;
+        cardToCopy.repetitions = 0;
+        cardToCopy.isSuspended = false;
+        cardToCopy.videoUrl = currentCard.videoUrl || null;
+        cardToCopy.createdAt = serverTimestamp();
+        cardToCopy.updatedAt = serverTimestamp();
+
+        delete cardToCopy.webCardGlobalId; // Xóa thuộc tính này nếu có
+
+        const newCardId = await FirestoreService.saveCardToFirestore(userId, targetDeckId, cardToCopy);
+
+        if (newCardId) {
+            console.log("Web card copied to user deck. New card ID:", newCardId);
+            copyToDeckSuccessMessage.textContent = `Đã sao chép thẻ "${cardToCopy.word || cardToCopy.phrasalVerb || cardToCopy.collocation}" vào bộ thẻ đã chọn!`;
+            copyToDeckSuccessMessage.classList.remove('hidden');
+
+            setTimeout(async () => {
+                closeCopyToDeckModal();
+                if (cardSourceSelect.value === 'user' && userDeckSelect.value === targetDeckId) {
+                    await loadVocabularyData(categorySelect.value); // Tải lại nếu đang xem deck đó
                 }
+            }, 2000);
+        } else {
+            copyToDeckErrorMessage.textContent = "Lỗi khi sao chép thẻ. Vui lòng thử lại.";
+            copyToDeckErrorMessage.classList.remove('hidden');
+        }
+    }
 
-                if (!cardItem.isUserCard && loggedIn) {
-                    const copyBtnEl = document.createElement('button');
-                    copyBtnEl.innerHTML = `<i class="fas fa-copy w-5 mr-3 text-sky-500"></i> Sao chép vào Thẻ của Tôi`;
-                    copyBtnEl.onclick = () => { openCopyToDeckModal(); closeBottomSheet(); };
-                    bottomSheetContent.appendChild(copyBtnEl);
-                    hasActions = true;
+    function openBottomSheet(cardItem, viewType = 'default', subView = 'youglish') {
+        if (!cardItem || !bottomSheetContent || !bottomSheetTitle || !bottomSheetOverlay || !bottomSheet) return;
+
+        let hasActions = false;
+        bottomSheetContent.innerHTML = '';
+        const loggedIn = getCurrentUserId();
+        let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "Thẻ";
+
+        bottomSheet.classList.remove('bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
+        bottomSheet.style.paddingBottom = '';
+        if(bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none';
+
+
+        if (viewType === 'default') {
+            bottomSheetTitle.textContent = `Tùy chọn cho: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
+
+            if (loggedIn && (cardItem.isUserCard || (cardItem.nextReviewDate || (cardItem.repetitions && cardItem.repetitions > 0) ))) {
+                const srsInfoDiv = document.createElement('div');
+                srsInfoDiv.className = 'text-xs text-slate-600 dark:text-slate-300 mb-3 p-3 border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-700/50';
+                let srsInfoHtml = '<h4 class="font-semibold text-sm mb-1 text-slate-700 dark:text-slate-100">Thông tin Ôn tập:</h4><ul class="list-inside space-y-0.5">';
+                if (cardItem.nextReviewDate) {
+                    const nextReview = new Date(cardItem.nextReviewDate);
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const reviewDay = new Date(nextReview.getTime()); reviewDay.setHours(0,0,0,0);
+                    let reviewText = `Lần ôn tiếp theo: ${nextReview.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+                    if (reviewDay <= today) reviewText += ' <span class="font-semibold text-amber-600 dark:text-amber-400">(Đến hạn)</span>';
+                    srsInfoHtml += `<li>${reviewText}</li>`;
+                } else {
+                    srsInfoHtml += `<li>Lần ôn tiếp theo: Chưa có (thẻ mới)</li>`;
                 }
-                if (cardItem.isUserCard && loggedIn) {
-                    const editBtnEl = document.createElement('button');
-                    editBtnEl.innerHTML = `<i class="fas fa-edit w-5 mr-3 text-blue-500"></i> Sửa thẻ`;
-                    editBtnEl.onclick = async () => { await openAddEditModal('edit', cardItem); closeBottomSheet(); };
-                    bottomSheetContent.appendChild(editBtnEl);
-                    hasActions = true;
+                srsInfoHtml += `<li>Khoảng cách: ${cardItem.interval || 0} ngày</li>`;
+                srsInfoHtml += `<li>Độ dễ: ${((cardItem.easeFactor || 2.5) * 100).toFixed(0)}%</li>`;
+                srsInfoHtml += `<li>Ôn đúng liên tiếp: ${cardItem.repetitions || 0}</li>`;
+                if (cardItem.isSuspended) {
+                    srsInfoHtml += `<li class="text-orange-500 font-semibold">Trạng thái: Đang tạm ngưng</li>`;
                 }
-                if (loggedIn && (cardItem.isUserCard || (cardItem.nextReviewDate || (cardItem.repetitions && cardItem.repetitions > 0) ))) {
-                    const resetSrsBtn = document.createElement('button');
-                    resetSrsBtn.innerHTML = `<i class="fas fa-undo-alt w-5 mr-3 text-amber-500"></i> Đặt lại Tiến độ Học`;
-                    resetSrsBtn.onclick = async () => {
-                        if (confirm("Bạn có chắc muốn đặt lại tiến độ học cho thẻ này? Thẻ sẽ được coi như mới học.")) {
-                            const srsResetData = {
-                                status: 'new', lastReviewed: serverTimestamp(), reviewCount: 0,
-                                nextReviewDate: serverTimestamp(), interval: 0, easeFactor: 2.5, repetitions: 0, isSuspended: false
-                            };
-                            let updateSuccess = false;
-                            if (cardItem.isUserCard) {
-                                updateSuccess = !!await FirestoreService.saveCardToFirestore(loggedIn, cardItem.deckId, srsResetData, cardItem.id);
-                            } else {
-                                const webCardGlobalId = getWebCardGlobalId(cardItem);
-                                if (webCardGlobalId) updateSuccess = await FirestoreService.updateWebCardStatusInFirestore(loggedIn, webCardGlobalId, cardItem, srsResetData);
-                            }
-                            if (updateSuccess) {
-                                Object.assign(cardItem, { ...srsResetData, nextReviewDate: Date.now(), lastReviewed: Date.now() });
-                                alert("Đã đặt lại tiến độ học cho thẻ."); updateFlashcard(); applyAllFilters();
-                            }
-                            closeBottomSheet();
-                        }
-                    };
-                    bottomSheetContent.appendChild(resetSrsBtn);
-                    hasActions = true;
-                }
-                if (loggedIn && (cardItem.isUserCard || (cardItem.nextReviewDate || (cardItem.repetitions && cardItem.repetitions > 0) ))) {
-                    const suspendBtn = document.createElement('button');
-                    suspendBtn.innerHTML = cardItem.isSuspended
-                        ? `<i class="fas fa-play-circle w-5 mr-3 text-green-500"></i> Tiếp tục Ôn tập`
-                        : `<i class="fas fa-pause-circle w-5 mr-3 text-yellow-500"></i> Tạm ngưng Ôn tập`;
-                    suspendBtn.onclick = async () => {
-                        const newSuspendedState = !cardItem.isSuspended;
-                        const dataToUpdate = { isSuspended: newSuspendedState, updatedAt: serverTimestamp() };
+                srsInfoHtml += '</ul>';
+                srsInfoDiv.innerHTML = srsInfoHtml;
+                bottomSheetContent.appendChild(srsInfoDiv);
+                hasActions = true;
+            }
+
+            if (!cardItem.isUserCard && loggedIn) {
+                const copyBtnEl = document.createElement('button');
+                copyBtnEl.innerHTML = `<i class="fas fa-copy w-5 mr-3 text-sky-500"></i> Sao chép vào Thẻ của Tôi`;
+                copyBtnEl.onclick = () => { openCopyToDeckModal(); closeBottomSheet(); };
+                bottomSheetContent.appendChild(copyBtnEl);
+                hasActions = true;
+            }
+            if (cardItem.isUserCard && loggedIn) {
+                const editBtnEl = document.createElement('button');
+                editBtnEl.innerHTML = `<i class="fas fa-edit w-5 mr-3 text-blue-500"></i> Sửa thẻ`;
+                editBtnEl.onclick = async () => { await openAddEditModal('edit', cardItem); closeBottomSheet(); };
+                bottomSheetContent.appendChild(editBtnEl);
+                hasActions = true;
+            }
+            if (loggedIn && (cardItem.isUserCard || (cardItem.nextReviewDate || (cardItem.repetitions && cardItem.repetitions > 0) ))) {
+                const resetSrsBtn = document.createElement('button');
+                resetSrsBtn.innerHTML = `<i class="fas fa-undo-alt w-5 mr-3 text-amber-500"></i> Đặt lại Tiến độ Học`;
+                resetSrsBtn.onclick = async () => {
+                    if (confirm("Bạn có chắc muốn đặt lại tiến độ học cho thẻ này? Thẻ sẽ được coi như mới học.")) {
+                        const srsResetData = {
+                            status: 'new', lastReviewed: serverTimestamp(), reviewCount: 0,
+                            nextReviewDate: serverTimestamp(), interval: 0, easeFactor: 2.5, repetitions: 0, isSuspended: false
+                        };
                         let updateSuccess = false;
                         if (cardItem.isUserCard) {
-                            updateSuccess = !!await FirestoreService.saveCardToFirestore(loggedIn, cardItem.deckId, dataToUpdate, cardItem.id);
+                            updateSuccess = !!await FirestoreService.saveCardToFirestore(loggedIn, cardItem.deckId, srsResetData, cardItem.id);
                         } else {
                             const webCardGlobalId = getWebCardGlobalId(cardItem);
-                            if (webCardGlobalId) {
-                                const existingWebStatus = await FirestoreService.getWebCardStatusFromFirestore(loggedIn, webCardGlobalId) || {};
-                                const fullDataToSet = { ...existingWebStatus, originalCategory: cardItem.category, originalWordOrPhrase: cardTerm, isSuspended: newSuspendedState, updatedAt: serverTimestamp() };
-                                for (const key in fullDataToSet) { if (fullDataToSet[key] === undefined) delete fullDataToSet[key]; }
-                                updateSuccess = await FirestoreService.updateWebCardStatusInFirestore(loggedIn, webCardGlobalId, cardItem, fullDataToSet);
-                            }
+                            if (webCardGlobalId) updateSuccess = await FirestoreService.updateWebCardStatusInFirestore(loggedIn, webCardGlobalId, cardItem, srsResetData);
                         }
                         if (updateSuccess) {
-                            cardItem.isSuspended = newSuspendedState; cardItem.updatedAt = Date.now();
-                            alert(newSuspendedState ? "Đã tạm ngưng thẻ này." : "Đã tiếp tục ôn tập thẻ này.");
-                            updateFlashcard(); applyAllFilters();
+                            Object.assign(cardItem, { ...srsResetData, nextReviewDate: Date.now(), lastReviewed: Date.now() }); // Cập nhật client-side
+                            alert("Đã đặt lại tiến độ học cho thẻ."); updateFlashcard(); applyAllFilters();
                         }
                         closeBottomSheet();
-                    };
-                    bottomSheetContent.appendChild(suspendBtn);
-                    hasActions = true;
-                }
-                if (cardItem.isUserCard && loggedIn) {
-                    const deleteBtnEl = document.createElement('button');
-                    deleteBtnEl.classList.add('text-red-600', 'dark:text-red-400');
-                    deleteBtnEl.innerHTML = `<i class="fas fa-trash-alt w-5 mr-3"></i> Xóa thẻ`;
-                    deleteBtnEl.onclick = async () => { await handleDeleteCard(); closeBottomSheet(); };
-                    bottomSheetContent.appendChild(deleteBtnEl);
-                    hasActions = true;
-                }
-            } else if (viewType === 'notes') {
-                bottomSheet.classList.add('bottom-sheet-notes-mode');
-                bottomSheetTitle.textContent = `Ghi chú cho: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
-                const notesTextarea = document.createElement('textarea');
-                notesTextarea.id = 'bottom-sheet-notes-textarea';
-                notesTextarea.value = cardItem.generalNotes || '';
-                notesTextarea.rows = 8;
-                notesTextarea.placeholder = "Nhập ghi chú chung, mẹo ghi nhớ (ví dụ: Mẹo: ...), hoặc ví dụ của bạn (ví dụ: VD: ...)";
-                bottomSheetContent.appendChild(notesTextarea);
-
-                const saveNotesBtn = document.createElement('button');
-                saveNotesBtn.innerHTML = `<i class="fas fa-save w-5 mr-3 text-indigo-500"></i> Lưu Nội dung`;
-                saveNotesBtn.classList.add('mt-2', 'bg-indigo-500', 'text-white', 'hover:bg-indigo-600', 'dark:bg-indigo-600', 'dark:hover:bg-indigo-700', 'py-2', 'px-4', 'rounded-md', 'w-full', 'flex', 'items-center', 'justify-center');
-                saveNotesBtn.onclick = async () => {
-                    const newNotes = notesTextarea.value;
-                    const dataToUpdate = { generalNotes: newNotes, updatedAt: serverTimestamp() };
+                    }
+                };
+                bottomSheetContent.appendChild(resetSrsBtn);
+                hasActions = true;
+            }
+            if (loggedIn && (cardItem.isUserCard || (cardItem.nextReviewDate || (cardItem.repetitions && cardItem.repetitions > 0) ))) {
+                const suspendBtn = document.createElement('button');
+                suspendBtn.innerHTML = cardItem.isSuspended
+                    ? `<i class="fas fa-play-circle w-5 mr-3 text-green-500"></i> Tiếp tục Ôn tập`
+                    : `<i class="fas fa-pause-circle w-5 mr-3 text-yellow-500"></i> Tạm ngưng Ôn tập`;
+                suspendBtn.onclick = async () => {
+                    const newSuspendedState = !cardItem.isSuspended;
+                    const dataToUpdate = { isSuspended: newSuspendedState, updatedAt: serverTimestamp() };
                     let updateSuccess = false;
-                    if (cardItem.isUserCard && loggedIn) {
+                    if (cardItem.isUserCard) {
                         updateSuccess = !!await FirestoreService.saveCardToFirestore(loggedIn, cardItem.deckId, dataToUpdate, cardItem.id);
-                    } else if (loggedIn) {
+                    } else {
                         const webCardGlobalId = getWebCardGlobalId(cardItem);
-                         if (webCardGlobalId) {
+                        if (webCardGlobalId) {
                             const existingWebStatus = await FirestoreService.getWebCardStatusFromFirestore(loggedIn, webCardGlobalId) || {};
-                            const fullDataToSet = { ...existingWebStatus, generalNotes: newNotes, updatedAt: serverTimestamp() };
+                            const fullDataToSet = { ...existingWebStatus, originalCategory: cardItem.category, originalWordOrPhrase: cardTerm, isSuspended: newSuspendedState, updatedAt: serverTimestamp() };
+                            for (const key in fullDataToSet) { if (fullDataToSet[key] === undefined) delete fullDataToSet[key]; }
                             updateSuccess = await FirestoreService.updateWebCardStatusInFirestore(loggedIn, webCardGlobalId, cardItem, fullDataToSet);
                         }
                     }
                     if (updateSuccess) {
-                        cardItem.generalNotes = newNotes;
-                        alert("Đã lưu ghi chú.");
-                        updateFlashcard();
-                    } else if (loggedIn) {
-                        alert("Lỗi lưu ghi chú.");
+                        cardItem.isSuspended = newSuspendedState; cardItem.updatedAt = Date.now(); // Cập nhật client-side
+                        alert(newSuspendedState ? "Đã tạm ngưng thẻ này." : "Đã tiếp tục ôn tập thẻ này.");
+                        updateFlashcard(); applyAllFilters();
                     }
                     closeBottomSheet();
                 };
-                bottomSheetContent.appendChild(saveNotesBtn);
+                bottomSheetContent.appendChild(suspendBtn);
                 hasActions = true;
-            } else if (viewType === 'media') {
-                bottomSheet.classList.add('bottom-sheet-media-mode');
-                bottomSheetTitle.textContent = `Nghe/Xem: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
-                if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'flex';
-
-                let youglishContainer = document.getElementById('youglish-tab-content');
-                if (!youglishContainer) {
-                    youglishContainer = document.createElement('div');
-                    youglishContainer.id = 'youglish-tab-content';
-                    youglishContainer.className = 'bottom-sheet-tab-content';
-                    bottomSheetContent.appendChild(youglishContainer);
-                }
-                let youtubeContainer = document.getElementById('youtube-tab-content');
-                if (!youtubeContainer) {
-                    youtubeContainer = document.createElement('div');
-                    youtubeContainer.id = 'youtube-tab-content';
-                    youtubeContainer.className = 'bottom-sheet-tab-content hidden';
-                    bottomSheetContent.appendChild(youtubeContainer);
-                }
-
-                setActiveMediaTab(subView, cardItem); // *** SỬA Ở ĐÂY: Dùng subView thay vì initialSubView ***
+            }
+            if (cardItem.isUserCard && loggedIn) {
+                const deleteBtnEl = document.createElement('button');
+                deleteBtnEl.classList.add('text-red-600', 'dark:text-red-400');
+                deleteBtnEl.innerHTML = `<i class="fas fa-trash-alt w-5 mr-3"></i> Xóa thẻ`;
+                deleteBtnEl.onclick = async () => { await handleDeleteCard(); closeBottomSheet(); };
+                bottomSheetContent.appendChild(deleteBtnEl);
                 hasActions = true;
-            } else if (viewType === 'practice_options') {
-                 bottomSheetTitle.textContent = `Luyện tập: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
-                 const practiceMeaningBtn = document.createElement('button');
-                 practiceMeaningBtn.innerHTML = `<i class="fas fa-list-alt w-5 mr-3 text-purple-500"></i> Luyện Nghĩa (Thẻ này)`;
-                 practiceMeaningBtn.onclick = () => {
-                    startSingleCardPractice(cardItem, 'meaning_quiz');
-                    closeBottomSheet();
-                };
-                 bottomSheetContent.appendChild(practiceMeaningBtn);
+            }
+        } else if (viewType === 'notes') {
+            bottomSheet.classList.add('bottom-sheet-notes-mode');
+            bottomSheetTitle.textContent = `Ghi chú cho: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
+            const notesTextarea = document.createElement('textarea');
+            notesTextarea.id = 'bottom-sheet-notes-textarea';
+            notesTextarea.value = cardItem.generalNotes || '';
+            notesTextarea.rows = 8;
+            notesTextarea.placeholder = "Nhập ghi chú chung, mẹo ghi nhớ (ví dụ: Mẹo: ...), hoặc ví dụ của bạn (ví dụ: VD: ...)";
+            bottomSheetContent.appendChild(notesTextarea);
 
-                 const practiceTypingBtn = document.createElement('button');
-                 practiceTypingBtn.innerHTML = `<i class="fas fa-keyboard w-5 mr-3 text-teal-500"></i> Luyện Gõ Từ (Thẻ này)`;
-                 practiceTypingBtn.onclick = () => {
-                    startSingleCardPractice(cardItem, 'typing_practice');
-                    closeBottomSheet();
-                };
-                 bottomSheetContent.appendChild(practiceTypingBtn);
-                 hasActions = true;
+            const saveNotesBtn = document.createElement('button');
+            saveNotesBtn.innerHTML = `<i class="fas fa-save w-5 mr-3 text-indigo-500"></i> Lưu Nội dung`;
+            saveNotesBtn.classList.add('mt-2', 'bg-indigo-500', 'text-white', 'hover:bg-indigo-600', 'dark:bg-indigo-600', 'dark:hover:bg-indigo-700', 'py-2', 'px-4', 'rounded-md', 'w-full', 'flex', 'items-center', 'justify-center');
+            saveNotesBtn.onclick = async () => {
+                const newNotes = notesTextarea.value;
+                const dataToUpdate = { generalNotes: newNotes, updatedAt: serverTimestamp() };
+                let updateSuccess = false;
+                if (cardItem.isUserCard && loggedIn) {
+                    updateSuccess = !!await FirestoreService.saveCardToFirestore(loggedIn, cardItem.deckId, dataToUpdate, cardItem.id);
+                } else if (loggedIn) { // Thẻ web, đã đăng nhập
+                    const webCardGlobalId = getWebCardGlobalId(cardItem);
+                     if (webCardGlobalId) {
+                        const existingWebStatus = await FirestoreService.getWebCardStatusFromFirestore(loggedIn, webCardGlobalId) || {};
+                        const fullDataToSet = { ...existingWebStatus, generalNotes: newNotes, updatedAt: serverTimestamp() }; // Giữ lại các trường khác
+                        updateSuccess = await FirestoreService.updateWebCardStatusInFirestore(loggedIn, webCardGlobalId, cardItem, fullDataToSet);
+                    }
+                }
+                if (updateSuccess) {
+                    cardItem.generalNotes = newNotes; // Cập nhật client-side
+                    alert("Đã lưu ghi chú.");
+                    updateFlashcard(); // Cập nhật hiển thị thẻ
+                } else if (loggedIn) { // Chỉ báo lỗi nếu đã đăng nhập mà không lưu được
+                    alert("Lỗi lưu ghi chú.");
+                }
+                closeBottomSheet();
+            };
+            bottomSheetContent.appendChild(saveNotesBtn);
+            hasActions = true;
+        } else if (viewType === 'media') {
+            bottomSheet.classList.add('bottom-sheet-media-mode');
+            bottomSheetTitle.textContent = `Nghe/Xem: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
+            if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'flex';
+
+            let youglishContainer = document.getElementById('youglish-tab-content');
+            if (!youglishContainer) {
+                youglishContainer = document.createElement('div');
+                youglishContainer.id = 'youglish-tab-content';
+                youglishContainer.className = 'bottom-sheet-tab-content';
+                bottomSheetContent.appendChild(youglishContainer);
+            }
+            let youtubeContainer = document.getElementById('youtube-tab-content');
+            if (!youtubeContainer) {
+                youtubeContainer = document.createElement('div');
+                youtubeContainer.id = 'youtube-tab-content';
+                youtubeContainer.className = 'bottom-sheet-tab-content hidden';
+                bottomSheetContent.appendChild(youtubeContainer);
             }
 
-            if (!hasActions && viewType === 'default') {
-                 console.log("Không có hành động nào cho thẻ này trong bottom sheet (default view).");
-                 if (cardOptionsMenuBtn) cardOptionsMenuBtn.style.display = 'none';
-                 if (cardOptionsMenuBtnBack) cardOptionsMenuBtnBack.style.display = 'none';
-                 return;
-            }
+            setActiveMediaTab(subView, cardItem);
+            hasActions = true;
+        } else if (viewType === 'practice_options') {
+             bottomSheetTitle.textContent = `Luyện tập: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
+             const practiceMeaningBtn = document.createElement('button');
+             practiceMeaningBtn.innerHTML = `<i class="fas fa-list-alt w-5 mr-3 text-purple-500"></i> Luyện Nghĩa (Thẻ này)`;
+             practiceMeaningBtn.onclick = () => {
+                startSingleCardPractice(cardItem, 'meaning_quiz');
+                closeBottomSheet();
+            };
+             bottomSheetContent.appendChild(practiceMeaningBtn);
 
-            bottomSheetOverlay.classList.remove('hidden');
-            bottomSheet.classList.remove('translate-y-full');
-            requestAnimationFrame(() => {
-                bottomSheetOverlay.classList.add('active');
-                bottomSheet.classList.add('active');
-            });
+             const practiceTypingBtn = document.createElement('button');
+             practiceTypingBtn.innerHTML = `<i class="fas fa-keyboard w-5 mr-3 text-teal-500"></i> Luyện Gõ Từ (Thẻ này)`;
+             practiceTypingBtn.onclick = () => {
+                startSingleCardPractice(cardItem, 'typing_practice');
+                closeBottomSheet();
+            };
+             bottomSheetContent.appendChild(practiceTypingBtn);
+             hasActions = true;
         }
 
-        function setActiveMediaTab(tabName, cardItem) {
-            const youglishContent = document.getElementById('youglish-tab-content');
-            const youtubeContent = document.getElementById('youtube-tab-content');
-            let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "Thẻ";
+        if (!hasActions && viewType === 'default') {
+             console.log("Không có hành động nào cho thẻ này trong bottom sheet (default view).");
+             if (cardOptionsMenuBtn) cardOptionsMenuBtn.style.display = 'none';
+             if (cardOptionsMenuBtnBack) cardOptionsMenuBtnBack.style.display = 'none';
+             return; // Không mở bottom sheet nếu không có gì để hiển thị
+        }
 
-            if (currentYouglishWidget) {
-                try { currentYouglishWidget.destroy(); } catch(e) { console.warn("Error destroying Youglish widget", e); }
-                currentYouglishWidget = null;
-            }
-            if (youglishContent) youglishContent.innerHTML = '';
-            if (youtubeContent) youtubeContent.innerHTML = '';
+        bottomSheetOverlay.classList.remove('hidden');
+        bottomSheet.classList.remove('translate-y-full');
+        requestAnimationFrame(() => {
+            bottomSheetOverlay.classList.add('active'); // Sử dụng class 'active' cho transition
+            bottomSheet.classList.add('active');
+        });
+    }
 
-            if (tabName === 'youglish') {
-                if (tabBtnYouglish) tabBtnYouglish.classList.add('active');
-                if (tabBtnYouTube) tabBtnYouTube.classList.remove('active');
-                if (youglishContent) youglishContent.classList.remove('hidden');
-                if (youtubeContent) youtubeContent.classList.add('hidden');
+    function setActiveMediaTab(tabName, cardItem) {
+        const youglishContent = document.getElementById('youglish-tab-content');
+        const youtubeContent = document.getElementById('youtube-tab-content');
+        let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "Thẻ";
 
-                const widgetContainerId = 'youglish-widget-dynamic-' + Date.now();
-                const widgetDiv = document.createElement('div');
-                widgetDiv.id = widgetContainerId;
-                widgetDiv.className = 'video-iframe-container';
-                if (youglishContent) youglishContent.appendChild(widgetDiv);
+        if (currentYouglishWidget) {
+            try { currentYouglishWidget.destroy(); } catch(e) { console.warn("Error destroying Youglish widget", e); }
+            currentYouglishWidget = null;
+        }
+        if (youglishContent) youglishContent.innerHTML = '';
+        if (youtubeContent) youtubeContent.innerHTML = '';
 
-                const createWidget = () => {
-                    if (document.getElementById(widgetContainerId)) {
-                         currentYouglishWidget = new YG.Widget(widgetContainerId, {
-                            width: "100%",
-                            components: 0,
-                            events: {
-                                'onFetchDone': function(event) {
-                                    if (event.totalResults === 0 && document.getElementById(widgetContainerId)) {
-                                        document.getElementById(widgetContainerId).innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Không tìm thấy kết quả cho từ này trên Youglish.</p>';
-                                    }
-                                },
-                                'onError': function(event) {
-                                    if (document.getElementById(widgetContainerId)) {
-                                        document.getElementById(widgetContainerId).innerHTML = '<p class="text-red-500 dark:text-red-400 p-4 text-center">Lỗi tải Youglish widget.</p>';
-                                    }
+        if (tabName === 'youglish') {
+            if (tabBtnYouglish) tabBtnYouglish.classList.add('active');
+            if (tabBtnYouTube) tabBtnYouTube.classList.remove('active');
+            if (youglishContent) youglishContent.classList.remove('hidden');
+            if (youtubeContent) youtubeContent.classList.add('hidden');
+
+            const widgetContainerId = 'youglish-widget-dynamic-' + Date.now();
+            const widgetDiv = document.createElement('div');
+            widgetDiv.id = widgetContainerId;
+            widgetDiv.className = 'video-iframe-container'; // Đảm bảo class này có style phù hợp
+            if (youglishContent) youglishContent.appendChild(widgetDiv);
+
+            const createWidget = () => {
+                if (document.getElementById(widgetContainerId)) { // Kiểm tra xem phần tử còn tồn tại không
+                     currentYouglishWidget = new YG.Widget(widgetContainerId, {
+                        width: "100%", // Hoặc kích thước cụ thể
+                        // height: "300", // Ví dụ
+                        components: 0, // 0: video only, 1: video + caption, 2: video + caption + tracklist
+                        events: {
+                            'onFetchDone': function(event) {
+                                if (event.totalResults === 0 && document.getElementById(widgetContainerId)) {
+                                    document.getElementById(widgetContainerId).innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Không tìm thấy kết quả cho từ này trên Youglish.</p>';
+                                }
+                            },
+                            'onError': function(event) {
+                                if (document.getElementById(widgetContainerId)) {
+                                    document.getElementById(widgetContainerId).innerHTML = '<p class="text-red-500 dark:text-red-400 p-4 text-center">Lỗi tải Youglish widget.</p>';
                                 }
                             }
-                        });
-                        currentYouglishWidget.fetch(cardTerm, "english", "us");
-                    }
-                };
-
-                if (isYouglishApiReady && typeof YG !== "undefined" && YG.Widget) {
-                    createWidget();
-                } else {
-                    console.log("Youglish API not ready, queuing widget creation for:", cardTerm);
-                    window.processPendingYouglishWidget = createWidget;
+                        }
+                    });
+                    currentYouglishWidget.fetch(cardTerm, "english", "us"); // Mặc định US accent
                 }
+            };
 
-            } else if (tabName === 'youtube_custom') {
-                if (tabBtnYouTube) tabBtnYouTube.classList.add('active');
-                if (tabBtnYouglish) tabBtnYouglish.classList.remove('active');
-                if (youtubeContent) youtubeContent.classList.remove('hidden');
-                if (youglishContent) youglishContent.classList.add('hidden');
-
-                if (cardItem.videoUrl) {
-                    const videoId = extractYouTubeVideoId(cardItem.videoUrl);
-                    if (videoId) {
-                        const iframeContainer = document.createElement('div');
-                        iframeContainer.className = 'video-iframe-container w-full';
-                        const iframe = document.createElement('iframe');
-                        iframe.src = `https://www.youtube.com/embed/$${videoId}`;
-                        iframe.title = "YouTube video player";
-                        iframe.frameBorder = "0";
-                        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-                        iframe.allowFullscreen = true;
-                        iframeContainer.appendChild(iframe);
-                        if (youtubeContent) youtubeContent.appendChild(iframeContainer);
-                    } else {
-                        if (youtubeContent) youtubeContent.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Link video YouTube không hợp lệ.</p>';
-                    }
-                } else {
-                    if (youtubeContent) youtubeContent.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Chưa có video YouTube nào được gán cho thẻ này. Bạn có thể thêm link trong phần sửa thẻ.</p>';
-                }
-            }
-        }
-
-
-        function closeBottomSheet() {
-            if (!bottomSheet || !bottomSheetOverlay) return;
-
-            if (currentYouglishWidget) {
-                try { currentYouglishWidget.destroy(); } catch(e) { console.warn("Error destroying Youglish widget during close", e); }
-                currentYouglishWidget = null;
+            if (isYouglishApiReady && typeof YG !== "undefined" && YG.Widget) {
+                createWidget();
+            } else {
+                console.log("Youglish API not ready, queuing widget creation for:", cardTerm);
+                window.processPendingYouglishWidget = createWidget; // Lưu hàm để gọi sau
             }
 
-            bottomSheet.classList.remove('active', 'bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
-            bottomSheetOverlay.classList.remove('active');
-            bottomSheet.style.paddingBottom = '';
-            if(bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none';
+        } else if (tabName === 'youtube_custom') { // Đổi tên tab để rõ ràng hơn
+            if (tabBtnYouTube) tabBtnYouTube.classList.add('active');
+            if (tabBtnYouglish) tabBtnYouglish.classList.remove('active');
+            if (youtubeContent) youtubeContent.classList.remove('hidden');
+            if (youglishContent) youglishContent.classList.add('hidden');
 
-            setTimeout(() => {
-                bottomSheet.classList.add('translate-y-full');
-                bottomSheetOverlay.classList.add('hidden');
-                const videoIframe = bottomSheetContent.querySelector('iframe');
-                if (videoIframe) {
-                    videoIframe.src = '';
+            if (cardItem.videoUrl) {
+                const videoId = extractYouTubeVideoId(cardItem.videoUrl);
+                if (videoId) {
+                    const iframeContainer = document.createElement('div');
+                    iframeContainer.className = 'video-iframe-container w-full'; // Đảm bảo class này có style
+                    const iframe = document.createElement('iframe');
+                    iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                    iframe.title = "YouTube video player";
+                    iframe.frameBorder = "0";
+                    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+                    iframe.allowFullscreen = true;
+                    iframeContainer.appendChild(iframe);
+                    if (youtubeContent) youtubeContent.appendChild(iframeContainer);
+                } else {
+                    if (youtubeContent) youtubeContent.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Link video YouTube không hợp lệ.</p>';
                 }
-                bottomSheetContent.innerHTML = '';
-            }, 300);
+            } else {
+                if (youtubeContent) youtubeContent.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Chưa có video YouTube nào được gán cho thẻ này. Bạn có thể thêm link trong phần sửa thẻ.</p>';
+            }
+        }
+    }
+
+
+    function closeBottomSheet() {
+        if (!bottomSheet || !bottomSheetOverlay) return;
+
+        if (currentYouglishWidget) {
+            try { currentYouglishWidget.destroy(); } catch(e) { console.warn("Error destroying Youglish widget during close", e); }
+            currentYouglishWidget = null;
         }
 
-        function extractYouTubeVideoId(url) {
-            if (!url) return null;
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2] && match[2].length === 11) ? match[2] : null;
-        }
+        bottomSheet.classList.remove('active', 'bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
+        bottomSheetOverlay.classList.remove('active');
+        bottomSheet.style.paddingBottom = ''; // Reset padding nếu có
+        if(bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none'; // Ẩn tabs
 
-        function startSingleCardPractice(cardItem, practiceMode) {
-            if (!cardItem) return;
-            console.log(`Starting single card practice for: ${cardItem.word || cardItem.phrasalVerb || cardItem.collocation}, Mode: ${practiceMode}`);
+        setTimeout(() => {
+            bottomSheet.classList.add('translate-y-full');
+            bottomSheetOverlay.classList.add('hidden');
+            // Xóa src của iframe để dừng video (nếu có)
+            const videoIframe = bottomSheetContent.querySelector('iframe');
+            if (videoIframe) {
+                videoIframe.src = ''; // Hoặc videoIframe.remove();
+            }
+            bottomSheetContent.innerHTML = ''; // Dọn dẹp nội dung
+        }, 300); // Thời gian transition
+    }
 
-            isSingleCardPracticeMode = true;
-            originalCurrentData = [...window.currentData];
-            originalCurrentIndex = window.currentIndex;
+    function extractYouTubeVideoId(url) {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2] && match[2].length === 11) ? match[2] : null;
+    }
 
-            window.currentData = [cardItem];
-            window.currentIndex = 0;
+    function startSingleCardPractice(cardItem, practiceMode) {
+        if (!cardItem) return;
+        console.log(`Starting single card practice for: ${cardItem.word || cardItem.phrasalVerb || cardItem.collocation}, Mode: ${practiceMode}`);
 
-            practiceType = practiceMode;
+        isSingleCardPracticeMode = true;
+        originalCurrentData = [...window.currentData];
+        originalCurrentIndex = window.currentIndex;
 
-            updateFlashcard();
-            showToast(`Bắt đầu luyện tập thẻ: ${cardItem.word || cardItem.phrasalVerb || cardItem.collocation}`, 3000);
-        }
+        window.currentData = [cardItem];
+        window.currentIndex = 0;
 
-        function exitSingleCardPractice() {
-            if (!isSingleCardPracticeMode) return;
-            console.log("Exiting single card practice mode.");
+        practiceType = practiceMode; // Cập nhật chế độ luyện tập toàn cục
 
-            isSingleCardPracticeMode = false;
-            window.currentData = [...originalCurrentData];
-            window.currentIndex = originalCurrentIndex;
+        updateFlashcard(); // Cập nhật UI thẻ
+        showToast(`Bắt đầu luyện tập thẻ: ${cardItem.word || cardItem.phrasalVerb || cardItem.collocation}`, 3000);
+    }
 
-            practiceType = 'off';
-            if (practiceTypeSelect) practiceTypeSelect.value = 'off';
+    function exitSingleCardPractice() {
+        if (!isSingleCardPracticeMode) return;
+        console.log("Exiting single card practice mode.");
 
-            updateFlashcard();
-            showToast("Đã thoát chế độ luyện tập thẻ.", 2000);
-        }
+        isSingleCardPracticeMode = false;
+        window.currentData = [...originalCurrentData];
+        window.currentIndex = originalCurrentIndex;
+
+        practiceType = 'off'; // Reset chế độ luyện tập
+        if (practiceTypeSelect) practiceTypeSelect.value = 'off'; // Cập nhật select nếu có
+
+        updateFlashcard(); // Cập nhật UI thẻ
+        showToast("Đã thoát chế độ luyện tập thẻ.", 2000);
+    }
 
 
-        function setupEventListeners() {
-            if(hamburgerMenuBtn) hamburgerMenuBtn.addEventListener('click', openSidebar);
-            if(closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
-            if(sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
+    function setupEventListeners() {
+        if(hamburgerMenuBtn) hamburgerMenuBtn.addEventListener('click', openSidebar);
+        if(closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
+        if(sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
 
-            if(cardSourceSelect) cardSourceSelect.addEventListener('change', async (e)=>{
-                currentDatasetSource=e.target.value;
-                const userId = getCurrentUserId();
-                if (currentDatasetSource === 'user' && !userId) {
-                    openAuthModalFromAuth('login');
-                    window.currentData = [];
-                    window.updateFlashcard();
-                    window.updateSidebarFilterVisibility();
-                    return;
-                }
-                if(practiceTypeSelect) practiceTypeSelect.value="off";
-                practiceType="off";
-                if(currentDatasetSource!=='user' && userDeckSelect)userDeckSelect.value='all_user_cards';
-                await loadVocabularyData(categorySelect.value);
-                window.updateSidebarFilterVisibility();
-                window.updateMainHeaderTitle();
-            });
+        if(cardSourceSelect) cardSourceSelect.addEventListener('change', async (e)=>{
+            currentDatasetSource=e.target.value;
+            const userId = getCurrentUserId();
+            if (currentDatasetSource === 'user' && !userId) {
+                openAuthModalFromAuth('login');
+                window.currentData = []; // Xóa dữ liệu thẻ
+                window.updateFlashcard(); // Cập nhật UI
+                window.updateSidebarFilterVisibility(); // Cập nhật sidebar
+                return;
+            }
+            if(practiceTypeSelect) practiceTypeSelect.value="off"; // Reset chế độ luyện tập
+            practiceType="off";
+            if(currentDatasetSource!=='user' && userDeckSelect)userDeckSelect.value='all_user_cards'; // Reset deck select
+            await loadVocabularyData(categorySelect.value);
+            window.updateSidebarFilterVisibility();
+            window.updateMainHeaderTitle();
+        });
 
-            if(userDeckSelect) userDeckSelect.addEventListener('change', async ()=>{
-                const userId = getCurrentUserId();
-                if(!userId) return;
-                const stateForCurrentCategory = getCategoryState(currentDatasetSource, categorySelect.value);
-                stateForCurrentCategory.deckId = userDeckSelect.value;
-                appState.lastSelectedDeckId = userDeckSelect.value;
-                saveAppState();
-                activeMasterList = await loadUserCards(userDeckSelect.value);
-                applyAllFilters(false);
-            });
+        if(userDeckSelect) userDeckSelect.addEventListener('change', async ()=>{
+            const userId = getCurrentUserId();
+            if(!userId) return; // Chỉ cho người dùng đã đăng nhập
+            const stateForCurrentCategory = getCategoryState(currentDatasetSource, categorySelect.value);
+            stateForCurrentCategory.deckId = userDeckSelect.value;
+            appState.lastSelectedDeckId = userDeckSelect.value;
+            saveAppState();
+            activeMasterList = await loadUserCards(userDeckSelect.value); // Tải thẻ cho deck mới
+            applyAllFilters(false); // Áp dụng lại bộ lọc, không phải từ load ban đầu
+        });
 
-            if(manageDecksBtn) manageDecksBtn.addEventListener('click', async ()=>{
-                const userId = getCurrentUserId();
-                if(!userId) {
-                    alert("Vui lòng đăng nhập để quản lý bộ thẻ.");
-                    openAuthModalFromAuth('login');
-                    return;
-                }
-                await loadUserDecks();
-                renderExistingDecksList();
-                manageDecksModal.classList.remove('hidden','opacity-0');
-                if (deckModalContent) deckModalContent.classList.remove('scale-95');
-                if (deckModalContent) deckModalContent.classList.add('scale-100');
-                newDeckNameInput.value='';
+        if(manageDecksBtn) manageDecksBtn.addEventListener('click', async ()=>{
+            const userId = getCurrentUserId();
+            if(!userId) {
+                alert("Vui lòng đăng nhập để quản lý bộ thẻ.");
+                openAuthModalFromAuth('login');
+                return;
+            }
+            await loadUserDecks(); // Luôn tải lại danh sách decks mới nhất
+            renderExistingDecksList();
+            manageDecksModal.classList.remove('hidden','opacity-0');
+            if (deckModalContent) deckModalContent.classList.remove('scale-95');
+            if (deckModalContent) deckModalContent.classList.add('scale-100');
+            newDeckNameInput.value='';
+            newDeckNameInput.focus();
+        });
+        if(closeDeckModalBtn) closeDeckModalBtn.addEventListener('click', ()=>{
+            manageDecksModal.classList.add('opacity-0');
+            if (deckModalContent) deckModalContent.classList.add('scale-95');
+            setTimeout(()=>manageDecksModal.classList.add('hidden'),250);
+        });
+
+        if(addNewDeckBtn) addNewDeckBtn.addEventListener('click', async ()=>{
+            const userId = getCurrentUserId();
+            if(!userId) {
+                alert("Vui lòng đăng nhập để tạo bộ thẻ.");
+                openAuthModalFromAuth('login');
+                return;
+            }
+
+            const deckName = newDeckNameInput.value.trim();
+
+            if (!deckName) {
+                alert("Tên bộ thẻ không được để trống.");
                 newDeckNameInput.focus();
-            });
-            if(closeDeckModalBtn) closeDeckModalBtn.addEventListener('click', ()=>{
-                manageDecksModal.classList.add('opacity-0');
-                if (deckModalContent) deckModalContent.classList.add('scale-95');
-                setTimeout(()=>manageDecksModal.classList.add('hidden'),250);
-            });
+                return;
+            }
 
-            if(addNewDeckBtn) addNewDeckBtn.addEventListener('click', async ()=>{
-                const userId = getCurrentUserId();
-                if(!userId) {
-                    alert("Vui lòng đăng nhập để tạo bộ thẻ.");
-                    openAuthModalFromAuth('login');
-                    return;
+            const createdDeck = await createDeck(deckName); // createDeck đã bao gồm loadUserDecks và render
+
+            if(createdDeck){
+                newDeckNameInput.value = ''; // Xóa input sau khi tạo thành công
+
+                // Nếu đang ở tab "Thẻ của tôi", tự động chọn bộ thẻ vừa tạo
+                if(currentDatasetSource === 'user'){
+                    appState.lastSelectedDeckId = createdDeck.id;
+                    const stateForCurrentCategory = getCategoryState(currentDatasetSource, categorySelect.value);
+                    stateForCurrentCategory.deckId = createdDeck.id;
+                    saveAppState();
+                    userDeckSelect.value = createdDeck.id; // Chọn deck mới trên UI
+                    activeMasterList = await loadUserCards(createdDeck.id); // Tải thẻ cho deck mới
+                    applyAllFilters(false); // Áp dụng lại bộ lọc
+                    updateMainHeaderTitle(); // Cập nhật tiêu đề
                 }
-
-                const deckName = newDeckNameInput.value.trim();
-
-                if (!deckName) {
-                    alert("Tên bộ thẻ không được để trống.");
-                    newDeckNameInput.focus();
-                    return;
-                }
-
-                const createdDeck = await createDeck(deckName);
-
-                if(createdDeck){
-                    newDeckNameInput.value = '';
-
-                    if(currentDatasetSource === 'user'){
-                        appState.lastSelectedDeckId = createdDeck.id;
-                        const stateForCurrentCategory = getCategoryState(currentDatasetSource, categorySelect.value);
-                        stateForCurrentCategory.deckId = createdDeck.id;
-                        saveAppState();
-                        userDeckSelect.value = createdDeck.id;
-                        activeMasterList = await loadUserCards(createdDeck.id);
-                        applyAllFilters(false);
-                        updateMainHeaderTitle();
-                    }
-                }
-            });
-
-            if(openAddCardModalBtn) openAddCardModalBtn.addEventListener('click', async () => {
-                await openAddEditModal('add');
-            });
-            if(closeModalBtn) closeModalBtn.addEventListener('click', closeAddEditModal);
-            if(cancelCardBtn) cancelCardBtn.addEventListener('click', closeAddEditModal);
-            if(addEditCardForm) addEditCardForm.addEventListener('submit', async (e)=>{
-                e.preventDefault();
-                await handleSaveCard();
-            });
-
-            if (manualInputModeBtn) {
-                manualInputModeBtn.addEventListener('click', () => switchToInputMode('manual'));
             }
-            if (jsonInputModeBtn) {
-                jsonInputModeBtn.addEventListener('click', () => switchToInputMode('json'));
-            }
-            if (processJsonBtn) {
-                processJsonBtn.addEventListener('click', processAndSaveJsonCards);
-            }
+        });
 
-            if (closeCopyToDeckModalBtn) {
-                closeCopyToDeckModalBtn.addEventListener('click', closeCopyToDeckModal);
-            }
-            if (cancelCopyToDeckBtn) {
-                cancelCopyToDeckBtn.addEventListener('click', closeCopyToDeckModal);
-            }
-            if (confirmCopyToDeckBtn) {
-                confirmCopyToDeckBtn.addEventListener('click', handleConfirmCopyToDeck);
-            }
-            if (copyToDeckSelect) {
-                copyToDeckSelect.addEventListener('change', function() {
-                    if (this.value === '_create_new_deck_') {
-                        copyNewDeckNameContainer.style.display = 'block';
-                        copyNewDeckNameInput.focus();
-                    } else {
-                        copyNewDeckNameContainer.style.display = 'none';
-                        copyNewDeckNameInput.value = '';
-                        copyNewDeckError.classList.add('hidden');
-                    }
-                });
-            }
+        if(openAddCardModalBtn) openAddCardModalBtn.addEventListener('click', async () => {
+            await openAddEditModal('add');
+        });
+        if(closeModalBtn) closeModalBtn.addEventListener('click', closeAddEditModal);
+        if(cancelCardBtn) cancelCardBtn.addEventListener('click', closeAddEditModal);
+        if(addEditCardForm) addEditCardForm.addEventListener('submit', async (e)=>{
+            e.preventDefault();
+            await handleSaveCard();
+        });
 
-            if (cardOptionsMenuBtn) {
-                cardOptionsMenuBtn.addEventListener('click', () => {
-                    const currentCard = window.currentData[window.currentIndex];
-                    if (currentCard) openBottomSheet(currentCard, 'default');
-                });
-            }
-            if (cardOptionsMenuBtnBack) {
-                 cardOptionsMenuBtnBack.addEventListener('click', () => {
-                    const currentCard = window.currentData[window.currentIndex];
-                    if (currentCard) openBottomSheet(currentCard, 'default');
-                });
-            }
-            if (closeBottomSheetBtn) {
-                closeBottomSheetBtn.addEventListener('click', closeBottomSheet);
-            }
-            if (bottomSheetOverlay) {
-                bottomSheetOverlay.addEventListener('click', closeBottomSheet);
-            }
+        if (manualInputModeBtn) {
+            manualInputModeBtn.addEventListener('click', () => switchToInputMode('manual'));
+        }
+        if (jsonInputModeBtn) {
+            jsonInputModeBtn.addEventListener('click', () => switchToInputMode('json'));
+        }
+        if (processJsonBtn) {
+            processJsonBtn.addEventListener('click', processAndSaveJsonCards);
+        }
 
-            if(actionBtnNotes) actionBtnNotes.addEventListener('click', () => {
-                const currentCard = window.currentData[window.currentIndex];
-                if (currentCard) openBottomSheet(currentCard, 'notes');
-            });
-            if(actionBtnMedia) actionBtnMedia.addEventListener('click', () => {
-                const currentCard = window.currentData[window.currentIndex];
-                if (currentCard) openBottomSheet(currentCard, 'media', 'youglish');
-            });
-            if(actionBtnPracticeCard) actionBtnPracticeCard.addEventListener('click', () => {
-                const currentCard = window.currentData[window.currentIndex];
-                if (currentCard) openBottomSheet(currentCard, 'practice_options');
-            });
-            if(exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.addEventListener('click', exitSingleCardPractice);
-
-            if(tabBtnYouglish) tabBtnYouglish.addEventListener('click', () => {
-                const currentCard = window.currentData[window.currentIndex];
-                if(currentCard) setActiveMediaTab('youglish', currentCard);
-            });
-            if(tabBtnYouTube) tabBtnYouTube.addEventListener('click', () => {
-                const currentCard = window.currentData[window.currentIndex];
-                if(currentCard) setActiveMediaTab('youtube_custom', currentCard);
-            });
-
-
-            if(practiceTypeSelect) practiceTypeSelect.addEventListener('change', (e)=>{clearLearningTimer();practiceType=e.target.value;const cat=categorySelect.value;const st=getCategoryState(currentDatasetSource,cat);searchInput.value='';if(cat==='phrasalVerbs' || cat === 'collocations'){st.tag='all';if(tagSelect)tagSelect.value='all';st.baseVerb='all';if(baseVerbSelect)baseVerbSelect.value='all';} const userId = getCurrentUserId(); if(currentDatasetSource==='user' && userId){st.deckId='all_user_cards';if(userDeckSelect)userDeckSelect.value='all_user_cards';}st.filterMarked='all_study';if(filterCardStatusSelect)filterCardStatusSelect.value='all_study';st.currentIndex=0;applyAllFilters();closeSidebar();});
-            if(categorySelect) categorySelect.addEventListener('change', async (e)=>{
-                clearLearningTimer();
-                const selCat=e.target.value;
-                if(practiceTypeSelect)practiceTypeSelect.value="off";
-                practiceType="off";
-                searchInput.value='';
-                await loadVocabularyData(selCat);
-                window.updateMainHeaderTitle();
-            });
-            if(baseVerbSelect) baseVerbSelect.addEventListener('change', ()=>applyAllFilters(false));
-            if(tagSelect) tagSelect.addEventListener('change', ()=>applyAllFilters(false));
-            if(searchInput) searchInput.addEventListener('input', ()=>applyAllFilters(false));
-            if(filterCardStatusSelect) filterCardStatusSelect.addEventListener('change', ()=>applyAllFilters(false));
-
-            // Xóa hoặc comment out event listener cũ cho việc lật thẻ bằng cách click vào flashcardElement
-            /*
-            if(flashcardElement) flashcardElement.addEventListener('click', (e)=>{
-                if (practiceType === "off" &&
-                    e.target.closest('.flashcard') === flashcardElement &&
-                    !e.target.closest('button#speaker-btn') &&
-                    !e.target.closest('button#speaker-example-btn') &&
-                    !e.target.closest('#card-options-menu-btn') &&
-                    !e.target.closest('#card-options-menu-btn-back') &&
-                    !e.target.closest('.toggle-examples-btn') &&
-                    !e.target.closest('.copy-example-btn') &&
-                    !e.target.closest('#empty-state-add-card-btn-on-card') &&
-                    !e.target.closest('#flip-icon-front') && // Đảm bảo không lật khi click vào icon mới
-                    !e.target.closest('#flip-icon-back')     // Đảm bảo không lật khi click vào icon mới
-                   ) {
-                    // flashcardElement.classList.toggle('flipped'); // Logic lật thẻ cũ bị vô hiệu hóa
+        if (closeCopyToDeckModalBtn) {
+            closeCopyToDeckModalBtn.addEventListener('click', closeCopyToDeckModal);
+        }
+        if (cancelCopyToDeckBtn) {
+            cancelCopyToDeckBtn.addEventListener('click', closeCopyToDeckModal);
+        }
+        if (confirmCopyToDeckBtn) {
+            confirmCopyToDeckBtn.addEventListener('click', handleConfirmCopyToDeck);
+        }
+        if (copyToDeckSelect) {
+            copyToDeckSelect.addEventListener('change', function() {
+                if (this.value === '_create_new_deck_') {
+                    copyNewDeckNameContainer.style.display = 'block';
+                    copyNewDeckNameInput.focus();
+                } else {
+                    copyNewDeckNameContainer.style.display = 'none';
+                    copyNewDeckNameInput.value = '';
+                    copyNewDeckError.classList.add('hidden');
                 }
             });
-            */
+        }
 
-            // Thêm event listener cho nút lật thẻ bằng icon trên thẻ (nút chung)
-            if(flipBtn) flipBtn.addEventListener('click', ()=>{
-                if(practiceType==="off" && window.currentData.length>0) {
+        if (cardOptionsMenuBtn) {
+            cardOptionsMenuBtn.addEventListener('click', () => {
+                const currentCard = window.currentData[window.currentIndex];
+                if (currentCard) openBottomSheet(currentCard, 'default');
+            });
+        }
+        if (cardOptionsMenuBtnBack) {
+             cardOptionsMenuBtnBack.addEventListener('click', () => {
+                const currentCard = window.currentData[window.currentIndex];
+                if (currentCard) openBottomSheet(currentCard, 'default');
+            });
+        }
+        if (closeBottomSheetBtn) {
+            closeBottomSheetBtn.addEventListener('click', closeBottomSheet);
+        }
+        if (bottomSheetOverlay) {
+            bottomSheetOverlay.addEventListener('click', closeBottomSheet);
+        }
+
+        if(actionBtnNotes) actionBtnNotes.addEventListener('click', () => {
+            const currentCard = window.currentData[window.currentIndex];
+            if (currentCard) openBottomSheet(currentCard, 'notes');
+        });
+        if(actionBtnMedia) actionBtnMedia.addEventListener('click', () => {
+            const currentCard = window.currentData[window.currentIndex];
+            if (currentCard) openBottomSheet(currentCard, 'media', 'youglish'); // Mặc định mở tab Youglish
+        });
+        if(actionBtnPracticeCard) actionBtnPracticeCard.addEventListener('click', () => {
+            const currentCard = window.currentData[window.currentIndex];
+            if (currentCard) openBottomSheet(currentCard, 'practice_options');
+        });
+        if(exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.addEventListener('click', exitSingleCardPractice);
+
+        if(tabBtnYouglish) tabBtnYouglish.addEventListener('click', () => {
+            const currentCard = window.currentData[window.currentIndex];
+            if(currentCard) setActiveMediaTab('youglish', currentCard);
+        });
+        if(tabBtnYouTube) tabBtnYouTube.addEventListener('click', () => {
+            const currentCard = window.currentData[window.currentIndex];
+            if(currentCard) setActiveMediaTab('youtube_custom', currentCard);
+        });
+
+
+        if(practiceTypeSelect) practiceTypeSelect.addEventListener('change', (e)=>{clearLearningTimer();practiceType=e.target.value;const cat=categorySelect.value;const st=getCategoryState(currentDatasetSource,cat);searchInput.value='';if(cat==='phrasalVerbs' || cat === 'collocations'){st.tag='all';if(tagSelect)tagSelect.value='all';st.baseVerb='all';if(baseVerbSelect)baseVerbSelect.value='all';} const userId = getCurrentUserId(); if(currentDatasetSource==='user' && userId){st.deckId='all_user_cards';if(userDeckSelect)userDeckSelect.value='all_user_cards';}st.filterMarked='all_study';if(filterCardStatusSelect)filterCardStatusSelect.value='all_study';st.currentIndex=0;applyAllFilters();closeSidebar();});
+        if(categorySelect) categorySelect.addEventListener('change', async (e)=>{
+            clearLearningTimer();
+            const selCat=e.target.value;
+            if(practiceTypeSelect)practiceTypeSelect.value="off"; // Reset chế độ luyện tập khi đổi category
+            practiceType="off";
+            searchInput.value=''; // Reset search
+            await loadVocabularyData(selCat);
+            window.updateMainHeaderTitle();
+        });
+        if(baseVerbSelect) baseVerbSelect.addEventListener('change', ()=>applyAllFilters(false));
+        if(tagSelect) tagSelect.addEventListener('change', ()=>applyAllFilters(false));
+        if(searchInput) searchInput.addEventListener('input', ()=>applyAllFilters(false));
+        if(filterCardStatusSelect) filterCardStatusSelect.addEventListener('change', ()=>applyAllFilters(false));
+
+
+        if(flipBtn) flipBtn.addEventListener('click', ()=>{
+            if(practiceType==="off" && window.currentData.length>0) {
+                flashcardElement.classList.toggle('flipped');
+            }
+        });
+
+        if (flipIconFront) {
+            flipIconFront.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (practiceType === "off" && window.currentData.length > 0) {
                     flashcardElement.classList.toggle('flipped');
                 }
             });
-
-            // Thêm event listener cho icon lật thẻ ở mặt trước
-            if (flipIconFront) {
-                flipIconFront.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Ngăn sự kiện lan truyền
-                    if (practiceType === "off" && window.currentData.length > 0) {
-                        flashcardElement.classList.toggle('flipped');
-                    }
-                });
-            }
-
-            // Thêm event listener cho icon lật thẻ ở mặt sau
-            if (flipIconBack) {
-                flipIconBack.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Ngăn sự kiện lan truyền
-                    if (practiceType === "off" && window.currentData.length > 0) {
-                        flashcardElement.classList.toggle('flipped');
-                    }
-                });
-            }
-
-
-            if(nextBtn) nextBtn.addEventListener('click', ()=>{if(isSpeakingExampleQueue){isSpeakingExampleQueue=false;window.speechSynthesis.cancel();speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));}if(nextBtn.disabled)return;clearLearningTimer();if(window.currentIndex<window.currentData.length-1){window.currentIndex++;getCategoryState(currentDatasetSource,categorySelect.value).currentIndex=window.currentIndex;saveAppState();window.updateFlashcard();}else if(practiceType!=="off"&&currentAnswerChecked&&window.currentIndex>=window.currentData.length-1)applyAllFilters();});
-            if(prevBtn) prevBtn.addEventListener('click', ()=>{if(isSpeakingExampleQueue){isSpeakingExampleQueue=false;window.speechSynthesis.cancel();speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));}clearLearningTimer();if(window.currentIndex>0){window.currentIndex--;getCategoryState(currentDatasetSource,categorySelect.value).currentIndex=window.currentIndex;saveAppState();window.updateFlashcard();}});
-            if(speakerBtn) speakerBtn.addEventListener('click', (e)=>{e.stopPropagation();if(isSpeakingExampleQueue){isSpeakingExampleQueue=false;window.speechSynthesis.cancel();speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));}const txt=wordDisplay.dataset.ttsText;if(txt&&!speakerBtn.disabled)speakText(txt,currentWordSpansMeta);});
-            if(speakerExampleBtn) speakerExampleBtn.addEventListener('click', (e)=>{e.stopPropagation();window.speechSynthesis.cancel();isSpeakingExampleQueue=false;currentExampleSpeechIndex=0;exampleSpeechQueue=[];const item=window.currentData[window.currentIndex];if(item&&item.meanings&&!speakerExampleBtn.disabled){item.meanings.forEach(m=>{if(m.examples){m.examples.forEach(ex=>{if(ex.eng&&ex.eng.trim())exampleSpeechQueue.push({text:ex.eng.trim(),spansMeta:[]});});}});if(exampleSpeechQueue.length>0){isSpeakingExampleQueue=true;speakerExampleBtn.disabled=true;playNextExampleInQueue();}}});
-
-            if(btnSrsAgain) btnSrsAgain.addEventListener('click', () => processSrsRatingWrapper('again'));
-            if(btnSrsHard) btnSrsHard.addEventListener('click', () => processSrsRatingWrapper('hard'));
-            if(btnSrsGood) btnSrsGood.addEventListener('click', () => processSrsRatingWrapper('good'));
-            if(btnSrsEasy) btnSrsEasy.addEventListener('click', () => processSrsRatingWrapper('easy'));
-
-            function checkTypingAnswer(){if(window.currentData.length===0||!currentCorrectAnswerForPractice)return;currentAnswerChecked=true;feedbackMessage.classList.remove('hidden');typingInput.disabled=true;submitTypingAnswerBtn.disabled=true;const uA=typingInput.value.trim().toLowerCase();const cA=currentCorrectAnswerForPractice.trim().toLowerCase();const iC=uA===cA;if(iC){feedbackMessage.textContent='Đúng!';feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300';}else{feedbackMessage.textContent=`Sai! Đáp án đúng: ${currentCorrectAnswerForPractice}`;feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300';}flashcardElement.classList.remove('practice-mode-front-only');flashcardElement.classList.add('flipped');const i=window.currentData[window.currentIndex];const iCV=i.category;const id=getCardIdentifier(i,iCV);if(id)processSrsRatingWrapper(iC?'easy':'again');updateCardInfo();}
-
-            if(submitTypingAnswerBtn) submitTypingAnswerBtn.addEventListener('click', checkTypingAnswer);
-            if(typingInput) typingInput.addEventListener('keypress', (e)=>{if(e.key==='Enter'&&practiceType==='typing_practice'&&!submitTypingAnswerBtn.disabled)checkTypingAnswer();});
-
-            if(addAnotherMeaningBlockAtEndBtn) addAnotherMeaningBlockAtEndBtn.addEventListener('click', () => addMeaningBlockToEnd());
-            if(cardWordInput) cardWordInput.addEventListener('input', () => clearFieldError(cardWordInput, cardWordError));
-            initializeClearButtonForSearch();
-            if(cardBaseVerbInput) cardBaseVerbInput.addEventListener('input', () => { const inputValue = cardBaseVerbInput.value.toLowerCase(); if (inputValue.length === 0) { hideAutocompleteSuggestions(cardBaseVerbInput); return; } const filteredSuggestions = baseVerbSuggestions.filter(verb => verb.toLowerCase().includes(inputValue) ); showAutocompleteSuggestions(cardBaseVerbInput, filteredSuggestions); });
-            if(cardBaseVerbInput) cardBaseVerbInput.addEventListener('focus', () => { const inputValue = cardBaseVerbInput.value.toLowerCase(); const filteredSuggestions = baseVerbSuggestions.filter(verb => verb.toLowerCase().includes(inputValue) ); if (filteredSuggestions.length > 0 || inputValue.length === 0) { showAutocompleteSuggestions(cardBaseVerbInput, filteredSuggestions.slice(0, 5)); } });
-            if(cardTagsInput) cardTagsInput.addEventListener('input', () => { const fullInputValue = cardTagsInput.value; const lastCommaIndex = fullInputValue.lastIndexOf(','); const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase(); if (currentTagQuery.length === 0) { hideAutocompleteSuggestions(cardTagsInput); return; } const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase()); const filteredSuggestions = tagSuggestions.filter(tag => tag.toLowerCase().includes(currentTagQuery) && !alreadyAddedTags.includes(tag.toLowerCase()) ); showAutocompleteSuggestions(cardTagsInput, filteredSuggestions, true); });
-            if(cardTagsInput) cardTagsInput.addEventListener('focus', () => { const fullInputValue = cardTagsInput.value; const lastCommaIndex = fullInputValue.lastIndexOf(','); const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase(); const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase()); const filteredSuggestions = tagSuggestions.filter(tag => tag.toLowerCase().includes(currentTagQuery) && !alreadyAddedTags.includes(tag.toLowerCase()) ); if (filteredSuggestions.length > 0 || currentTagQuery.length === 0) { showAutocompleteSuggestions(cardTagsInput, filteredSuggestions.slice(0, 5), true); } });
-            document.addEventListener('click', function(event) { const activeSuggestionsList = document.querySelector('.autocomplete-suggestions-list'); if (activeSuggestionsList) { const inputId = activeSuggestionsList.id.replace('-suggestions', ''); const inputElement = document.getElementById(inputId); if (inputElement && !inputElement.contains(event.target) && !activeSuggestionsList.contains(event.target)) { hideAutocompleteSuggestions(inputElement); } } });
         }
 
-        async function setupInitialCategoryAndSource() {
-            if (!getCurrentUserId()) {
-                await loadAppState();
-            }
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const sourceFromUrl = urlParams.get('source');
-            currentDatasetSource = sourceFromUrl || appState.lastSelectedSource || 'web';
-            if(cardSourceSelect) cardSourceSelect.value = currentDatasetSource;
-            if(categorySelect) categorySelect.value = appState.lastSelectedCategory || 'phrasalVerbs';
-
-            await loadVocabularyData(categorySelect.value);
+        if (flipIconBack) {
+            flipIconBack.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (practiceType === "off" && window.currentData.length > 0) {
+                    flashcardElement.classList.toggle('flipped');
+                }
+            });
         }
 
-    }); // END DOMContentLoaded
+
+        if(nextBtn) nextBtn.addEventListener('click', ()=>{
+            // if(isSpeakingExampleQueue){isSpeakingExampleQueue=false;window.speechSynthesis.cancel();speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));}
+            window.speechSynthesis.cancel(); // Hủy bỏ mọi phát âm khi chuyển thẻ
+            if(nextBtn.disabled)return;clearLearningTimer();if(window.currentIndex<window.currentData.length-1){window.currentIndex++;getCategoryState(currentDatasetSource,categorySelect.value).currentIndex=window.currentIndex;saveAppState();window.updateFlashcard();}else if(practiceType!=="off"&&currentAnswerChecked&&window.currentIndex>=window.currentData.length-1)applyAllFilters();});
+        if(prevBtn) prevBtn.addEventListener('click', ()=>{
+            // if(isSpeakingExampleQueue){isSpeakingExampleQueue=false;window.speechSynthesis.cancel();speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));}
+            window.speechSynthesis.cancel(); // Hủy bỏ mọi phát âm khi chuyển thẻ
+            clearLearningTimer();if(window.currentIndex>0){window.currentIndex--;getCategoryState(currentDatasetSource,categorySelect.value).currentIndex=window.currentIndex;saveAppState();window.updateFlashcard();}});
+        if(speakerBtn) speakerBtn.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            // if(isSpeakingExampleQueue){isSpeakingExampleQueue=false;window.speechSynthesis.cancel();speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));}
+            window.speechSynthesis.cancel();
+            const txt=wordDisplay.dataset.ttsText;
+            if(txt&&!speakerBtn.disabled)speakText(txt,currentWordSpansMeta);});
+
+        // Loại bỏ event listener cho speakerExampleBtn cũ
+        // if(speakerExampleBtn) speakerExampleBtn.addEventListener('click', (e)=>{e.stopPropagation();window.speechSynthesis.cancel();isSpeakingExampleQueue=false;currentExampleSpeechIndex=0;exampleSpeechQueue=[];const item=window.currentData[window.currentIndex];if(item&&item.meanings&&!speakerExampleBtn.disabled){item.meanings.forEach(m=>{if(m.examples){m.examples.forEach(ex=>{if(ex.eng&&ex.eng.trim())exampleSpeechQueue.push({text:ex.eng.trim(),spansMeta:[]});});}});if(exampleSpeechQueue.length>0){isSpeakingExampleQueue=true;speakerExampleBtn.disabled=true;playNextExampleInQueue();}}});
+
+        if(btnSrsAgain) btnSrsAgain.addEventListener('click', () => processSrsRatingWrapper('again'));
+        if(btnSrsHard) btnSrsHard.addEventListener('click', () => processSrsRatingWrapper('hard'));
+        if(btnSrsGood) btnSrsGood.addEventListener('click', () => processSrsRatingWrapper('good'));
+        if(btnSrsEasy) btnSrsEasy.addEventListener('click', () => processSrsRatingWrapper('easy'));
+
+        function checkTypingAnswer(){if(window.currentData.length===0||!currentCorrectAnswerForPractice)return;currentAnswerChecked=true;feedbackMessage.classList.remove('hidden');typingInput.disabled=true;submitTypingAnswerBtn.disabled=true;const uA=typingInput.value.trim().toLowerCase();const cA=currentCorrectAnswerForPractice.trim().toLowerCase();const iC=uA===cA;if(iC){feedbackMessage.textContent='Đúng!';feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-green-100 text-green-700 border border-green-300';}else{feedbackMessage.textContent=`Sai! Đáp án đúng: ${currentCorrectAnswerForPractice}`;feedbackMessage.className='mt-3 p-3 rounded-md w-full text-center font-semibold bg-red-100 text-red-700 border border-red-300';}flashcardElement.classList.remove('practice-mode-front-only');flashcardElement.classList.add('flipped');const i=window.currentData[window.currentIndex];const iCV=i.category;const id=getCardIdentifier(i,iCV);if(id)processSrsRatingWrapper(iC?'easy':'again');updateCardInfo();}
+
+        if(submitTypingAnswerBtn) submitTypingAnswerBtn.addEventListener('click', checkTypingAnswer);
+        if(typingInput) typingInput.addEventListener('keypress', (e)=>{if(e.key==='Enter'&&practiceType==='typing_practice'&&!submitTypingAnswerBtn.disabled)checkTypingAnswer();});
+
+        if(addAnotherMeaningBlockAtEndBtn) addAnotherMeaningBlockAtEndBtn.addEventListener('click', () => addMeaningBlockToEnd());
+        if(cardWordInput) cardWordInput.addEventListener('input', () => clearFieldError(cardWordInput, cardWordError));
+        initializeClearButtonForSearch();
+        if(cardBaseVerbInput) cardBaseVerbInput.addEventListener('input', () => { const inputValue = cardBaseVerbInput.value.toLowerCase(); if (inputValue.length === 0) { hideAutocompleteSuggestions(cardBaseVerbInput); return; } const filteredSuggestions = baseVerbSuggestions.filter(verb => verb.toLowerCase().includes(inputValue) ); showAutocompleteSuggestions(cardBaseVerbInput, filteredSuggestions); });
+        if(cardBaseVerbInput) cardBaseVerbInput.addEventListener('focus', () => { const inputValue = cardBaseVerbInput.value.toLowerCase(); const filteredSuggestions = baseVerbSuggestions.filter(verb => verb.toLowerCase().includes(inputValue) ); if (filteredSuggestions.length > 0 || inputValue.length === 0) { showAutocompleteSuggestions(cardBaseVerbInput, filteredSuggestions.slice(0, 5)); } });
+        if(cardTagsInput) cardTagsInput.addEventListener('input', () => { const fullInputValue = cardTagsInput.value; const lastCommaIndex = fullInputValue.lastIndexOf(','); const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase(); if (currentTagQuery.length === 0) { hideAutocompleteSuggestions(cardTagsInput); return; } const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase()); const filteredSuggestions = tagSuggestions.filter(tag => tag.toLowerCase().includes(currentTagQuery) && !alreadyAddedTags.includes(tag.toLowerCase()) ); showAutocompleteSuggestions(cardTagsInput, filteredSuggestions, true); });
+        if(cardTagsInput) cardTagsInput.addEventListener('focus', () => { const fullInputValue = cardTagsInput.value; const lastCommaIndex = fullInputValue.lastIndexOf(','); const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase(); const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase()); const filteredSuggestions = tagSuggestions.filter(tag => tag.toLowerCase().includes(currentTagQuery) && !alreadyAddedTags.includes(tag.toLowerCase()) ); if (filteredSuggestions.length > 0 || currentTagQuery.length === 0) { showAutocompleteSuggestions(cardTagsInput, filteredSuggestions.slice(0, 5), true); } });
+        document.addEventListener('click', function(event) { const activeSuggestionsList = document.querySelector('.autocomplete-suggestions-list'); if (activeSuggestionsList) { const inputId = activeSuggestionsList.id.replace('-suggestions', ''); const inputElement = document.getElementById(inputId); if (inputElement && !inputElement.contains(event.target) && !activeSuggestionsList.contains(event.target)) { hideAutocompleteSuggestions(inputElement); } } });
+
+        // Setup Auth Modal listeners after DOM is ready
+        setupAuthModalDOMListeners(); // Gọi hàm này từ auth.js (đã được nhúng)
+    }
+
+    async function setupInitialCategoryAndSource() {
+        if (!getCurrentUserId()) { // Từ auth.js
+            await loadAppState();
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const sourceFromUrl = urlParams.get('source');
+        currentDatasetSource = sourceFromUrl || appState.lastSelectedSource || 'web';
+        if(cardSourceSelect) cardSourceSelect.value = currentDatasetSource;
+        if(categorySelect) categorySelect.value = appState.lastSelectedCategory || 'phrasalVerbs';
+
+        await loadVocabularyData(categorySelect.value);
+    }
+
+}); // END DOMContentLoaded
