@@ -2862,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('click', function(event) { const activeSuggestionsList = document.querySelector('.autocomplete-suggestions-list'); if (activeSuggestionsList) { const inputId = activeSuggestionsList.id.replace('-suggestions', ''); const inputElement = document.getElementById(inputId); if (inputElement && !inputElement.contains(event.target) && !activeSuggestionsList.contains(event.target)) { hideAutocompleteSuggestions(inputElement); } } });
 
         // Setup Auth Modal listeners after DOM is ready
-        setupAuthModalDOMListeners(); // Gọi hàm này từ auth.js (đã được nhúng)
+        // setupAuthModalDOMListeners(); // Gọi hàm này từ auth.js (đã được nhúng)
     }
 
     async function setupInitialCategoryAndSource() {
