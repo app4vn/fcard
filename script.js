@@ -85,9 +85,9 @@ let originalCurrentData = [];
 let originalCurrentIndex = 0;
 
 // Youglish related
-let currentYouglishWidget = null;
-let isYouglishApiReady = false;
-const YOUGLISH_WIDGET_ID = 'app-youglish-widget-instance'; 
+let currentYouglishWidget = null; // Vẫn giữ để có thể dùng lại sau, nhưng logic khởi tạo sẽ đơn giản hơn
+let isYouglishApiReady = false; // Vẫn theo dõi trạng thái API
+// const YOUGLISH_WIDGET_ID = 'app-youglish-widget-instance'; // Tạm thời không dùng ID cố định nếu widget không được chủ động tạo
 
 // Biến cho chức năng vuốt thẻ
 let touchStartX = 0;
@@ -101,14 +101,15 @@ const swipeMaxVerticalOffset = 75;
 window.onYouglishAPIReady = function() {
     console.log("[Youglish] API is now officially ready (onYouglishAPIReady called).");
     isYouglishApiReady = true;
-    if (typeof window.processPendingYouglishWidget === 'function') {
-        console.log("[Youglish] Calling processPendingYouglishWidget.");
-        const pendingWidgetFunction = window.processPendingYouglishWidget;
-        window.processPendingYouglishWidget = null;
-        pendingWidgetFunction();
-    } else {
-        console.log("[Youglish] No pending widget function to process.");
-    }
+    // Không cần gọi processPendingYouglishWidget nếu chúng ta không chủ động tạo widget nữa
+    // if (typeof window.processPendingYouglishWidget === 'function') {
+    //     console.log("[Youglish] Calling processPendingYouglishWidget.");
+    //     const pendingWidgetFunction = window.processPendingYouglishWidget;
+    //     window.processPendingYouglishWidget = null;
+    //     pendingWidgetFunction();
+    // } else {
+    //     console.log("[Youglish] No pending widget function to process.");
+    // }
 };
 
 
@@ -297,9 +298,10 @@ async function handleAuthStateChangedInApp(user) {
 
     if (typeof setupInitialCategoryAndSource === 'function') {
         await setupInitialCategoryAndSource();
+        // Đảm bảo updateFlashcard được gọi sau khi mọi thứ đã sẵn sàng
         if (window.currentData && window.currentData.length > 0 && window.currentIndex < window.currentData.length && typeof window.updateFlashcard === 'function') {
              console.log("Auth Change: Forcing UI update for current card index:", window.currentIndex);
-             window.updateFlashcard();
+             window.updateFlashcard(); // Gọi lại để đảm bảo UI của thẻ hiện tại được cập nhật đầy đủ
         } else {
             console.log("Auth Change: Conditions not met for forcing updateFlashcard. currentData length:", window.currentData?.length, "currentIndex:", window.currentIndex);
         }
@@ -2426,11 +2428,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (youtubeContentDiv) youtubeContentDiv.classList.add('hidden');
         if (tabBtnYouglish) tabBtnYouglish.classList.remove('active');
         if (tabBtnYouTube) tabBtnYouTube.classList.remove('active');
-
+        
         // Destroy Youglish widget if it exists and the new tab is not Youglish
         if (tabName !== 'youglish' && currentYouglishWidget && typeof currentYouglishWidget.destroy === 'function') {
-            console.log("[Youglish] Destroying Youglish widget as tab is changing.");
-            try { currentYouglishWidget.destroy(); } catch(e){ console.warn("Error destroying Youglish widget", e)}
+            console.log("[Youglish] Destroying Youglish widget as tab is changing or closing.");
+            try { currentYouglishWidget.destroy(); } catch(e){ console.warn("Error destroying youglish widget", e)}
             currentYouglishWidget = null;
             const oldYgLink = document.getElementById(YOUGLISH_WIDGET_ID);
             if (oldYgLink && oldYgLink.parentNode) {
@@ -2451,9 +2453,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ygLink.id = YOUGLISH_WIDGET_ID;
                     ygLink.className = 'youglish-widget';
                     ygLink.href = "https://youglish.com";
-                    // Add data-attributes for Youglish widget configuration if needed, e.g.:
-                    // ygLink.dataset.width="100%";
-                    // ygLink.dataset.components="0"; // Video only
                     youglishContentDiv.appendChild(ygLink);
                 }
             }
@@ -2466,11 +2465,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
-                if (!currentYouglishWidget) {
+                if (!currentYouglishWidget) { 
                     currentYouglishWidget = YG.getWidget(YOUGLISH_WIDGET_ID);
                     console.log("[Youglish] Got widget instance:", currentYouglishWidget);
                     if (currentYouglishWidget) {
-                        // Setup listeners only once per widget instance
                         currentYouglishWidget.addEventListener("onError", function (event) {
                             console.error('[Youglish] Widget Error:', event);
                             const container = document.getElementById(YOUGLISH_WIDGET_ID)?.parentNode;
@@ -2509,7 +2507,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (tabBtnYouTube) tabBtnYouTube.classList.add('active');
             if (youtubeContentDiv) {
                 youtubeContentDiv.classList.remove('hidden');
-                youtubeContentDiv.innerHTML = ''; // Clear previous content
+                youtubeContentDiv.innerHTML = ''; 
 
                 if (cardItem.videoUrl) {
                     const videoId = extractYouTubeVideoId(cardItem.videoUrl);
@@ -2517,7 +2515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const iframeContainer = document.createElement('div');
                         iframeContainer.className = 'video-iframe-container w-full';
                         const iframe = document.createElement('iframe');
-                        iframe.src = `https://www.youtube.com/embed/{videoId}`; // Standard embed URL
+                        iframe.src = `https://www.youtube.com/embed/$${videoId}`; // URL đã khôi phục
                         iframe.title = "YouTube video player";
                         iframe.frameBorder = "0";
                         iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
@@ -2539,7 +2537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                      const searchButton = document.createElement('button');
                      searchButton.className = 'py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md shadow-sm flex items-center justify-center mx-auto'; 
                      const baseSearchTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "";
-                     const youtubeSearchTerm = `học từ ${baseSearchTerm}`; // Add "học từ" prefix
+                     const youtubeSearchTerm = `học từ ${baseSearchTerm}`; // Thêm "học từ"
                      searchButton.innerHTML = `<i class="fab fa-youtube mr-2"></i> Tìm trên YouTube với từ khóa "${baseSearchTerm}"`;
                      searchButton.onclick = () => {
                          window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSearchTerm)}`, '_blank');
