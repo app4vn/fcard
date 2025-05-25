@@ -85,7 +85,11 @@ let currentEditingDeckId = null;
 let isSingleCardPracticeMode = false;
 let originalCurrentData = [];
 let originalCurrentIndex = 0;
-// Removed Youglish specific state variables: currentYouglishWidget, isYouglishApiReady, processPendingYouglishWidget
+
+// Youglish specific state variables
+let isYouglishApiReady = false;
+let bottomSheetYouglishWidget = null;
+
 
 const tagDisplayNames = {"all": "Tất cả chủ đề", "actions_general": "Hành động chung", "actions_tasks": "Hành động & Nhiệm vụ", "movement_travel": "Di chuyển & Du lịch", "communication": "Giao tiếp", "relationships_social": "Quan hệ & Xã hội", "emotions_feelings": "Cảm xúc & Cảm giác", "problems_solutions": "Vấn đề & Giải pháp", "work_business": "Công việc & Kinh doanh", "learning_information": "Học tập & Thông tin", "daily_routine": "Thói quen hàng ngày", "health_wellbeing": "Sức khỏe & Tinh thần", "objects_possession": "Đồ vật & Sở hữu", "time_planning": "Thời gian & Kế hoạch", "money_finance": "Tiền bạc & Tài chính", "behavior_attitude": "Hành vi & Thái độ", "begin_end_change": "Bắt đầu, Kết thúc & Thay đổi", "food_drink": "Ăn uống", "home_living": "Nhà cửa & Đời sống", "rules_systems": "Quy tắc & Hệ thống", "effort_achievement": "Nỗ lực & Thành tựu", "safety_danger": "An toàn & Nguy hiểm", "technology": "Công nghệ", "nature": "Thiên nhiên & Thời tiết", "art_creation": "Nghệ thuật & Sáng tạo" };
 
@@ -301,6 +305,113 @@ function showToast(message, duration = 3000, type = 'info') {
     toastTimeout = setTimeout(() => {
         srsFeedbackToastEl.classList.remove('show');
     }, duration);
+}
+
+// Youglish API callback function (must be in global scope)
+window.onYouglishAPIReady = function() {
+    console.log("Youglish API is ready (Global Callback).");
+    isYouglishApiReady = true;
+    // Attempt to initialize widget if bottom sheet is open and tab is active
+    const activeBottomSheetWidgetElement = document.getElementById('bs-yg-widget');
+    const youglishTabContent = document.getElementById('youglish-tab-content');
+    if (activeBottomSheetWidgetElement && youglishTabContent && !youglishTabContent.classList.contains('hidden') && !bottomSheetYouglishWidget) {
+        console.log("API ready, attempting to initialize pending widget in bottom sheet.");
+        initializeYouglishWidgetInBottomSheet('bs-yg-widget');
+    }
+};
+
+async function initializeYouglishWidgetInBottomSheet(widgetId, initialTerm = null) {
+    if (typeof YG === 'undefined' || typeof YG.getWidget !== 'function') {
+        console.warn("YG object or YG.getWidget is not available yet.");
+        // Optionally show a message to the user if the API script hasn't loaded
+        const youglishTabContent = document.getElementById('youglish-tab-content');
+        if (youglishTabContent && !youglishTabContent.querySelector('.youglish-error-message')) {
+             const errorP = document.createElement('p');
+             errorP.className = 'text-orange-500 dark:text-orange-400 text-center p-2 youglish-error-message';
+             errorP.textContent = "Đang chờ Youglish API tải xong...";
+             youglishTabContent.appendChild(errorP);
+        }
+        return; // Exit if YG is not defined
+    }
+    try {
+        console.log(`Attempting to get Youglish widget with ID: ${widgetId}`);
+        const widgetInstance = YG.getWidget(widgetId); // This should get the widget instance
+        if (widgetInstance) {
+            bottomSheetYouglishWidget = widgetInstance;
+            bottomSheetYouglishWidget.addEventListener("onError", handleYouglishErrorInBottomSheet);
+            console.log("Youglish widget initialized in bottom sheet:", bottomSheetYouglishWidget);
+            
+            // If an initial term was passed (e.g., from the trigger click before widget was ready)
+            if (initialTerm && typeof bottomSheetYouglishWidget.fetch === 'function') {
+                 console.log(`Performing initial fetch for: ${initialTerm}`);
+                 bottomSheetYouglishWidget.fetch(initialTerm, "english", "us"); // Default to US English
+                 const parentDiv = document.getElementById('bs-yg-widget-parent');
+                 if (parentDiv) parentDiv.style.display = 'block';
+            }
+        } else {
+            console.error(`Failed to get Youglish widget with ID: ${widgetId}. YG.getWidget returned null.`);
+            handleYouglishErrorInBottomSheet({ code: 'YG_GETWIDGET_FAILED', message: "Không thể lấy widget Youglish. Hãy thử đóng và mở lại." });
+        }
+    } catch (error) {
+        console.error("Error initializing Youglish widget in bottom sheet:", error);
+        handleYouglishErrorInBottomSheet({ code: 'CUSTOM_INIT_EXCEPTION', message: "Lỗi không xác định khi khởi tạo Youglish." });
+    }
+}
+
+function handleYouglishErrorInBottomSheet(event) {
+    console.error("Youglish Widget Error in Bottom Sheet:", event);
+    const ygWidgetParent = document.getElementById('bs-yg-widget-parent');
+    if (ygWidgetParent) {
+        ygWidgetParent.style.display = 'none'; // Hide the widget container
+        // Optionally, destroy the widget if it exists and is causing persistent errors
+        if (bottomSheetYouglishWidget && typeof bottomSheetYouglishWidget.destroy === 'function') {
+            try {
+                bottomSheetYouglishWidget.destroy();
+            } catch (e) { console.warn("Error destroying widget on error:", e); }
+            bottomSheetYouglishWidget = null; // Reset for re-initialization
+        }
+    }
+
+    const youglishTabContent = document.getElementById('youglish-tab-content');
+    if (youglishTabContent) {
+        // Remove previous error messages
+        const existingError = youglishTabContent.querySelector('.youglish-error-message');
+        if (existingError) existingError.remove();
+
+        const errorP = document.createElement('p');
+        errorP.className = 'text-red-500 dark:text-red-400 text-center p-2 youglish-error-message';
+        let errorMessage = "Đã xảy ra lỗi với Youglish.";
+        if (event && event.code) {
+            switch(event.code){
+                case 'YG_GETWIDGET_FAILED':
+                    errorMessage = "Không thể khởi tạo widget Youglish. Vui lòng thử đóng và mở lại.";
+                    break;
+                case 'CUSTOM_INIT_EXCEPTION':
+                     errorMessage = "Lỗi không xác định khi khởi tạo Youglish. Vui lòng thử lại.";
+                     break;
+                case 'CUSTOM_FETCH_ERROR':
+                    errorMessage = event.message || "Lỗi khi tải video từ Youglish. Từ này có thể không có sẵn.";
+                    break;
+                // You can add more specific YG.Error cases if needed
+                // Example: case YG.Error.TIMEOUT: errorMessage = "Youglish timeout. Please try again."; break;
+                default:
+                    errorMessage = event.message || "Lỗi không xác định từ Youglish.";
+            }
+        } else if (event && event.message) {
+            errorMessage = event.message;
+        }
+        errorP.textContent = errorMessage;
+        
+        // Prepend error message so it's visible
+        const termTriggerBtn = document.getElementById('youglish-term-trigger');
+        if (termTriggerBtn && termTriggerBtn.parentNode === youglishTabContent) {
+            youglishTabContent.insertBefore(errorP, termTriggerBtn.nextSibling);
+        } else {
+             youglishTabContent.appendChild(errorP);
+        }
+    }
+    const termTriggerBtn = document.getElementById('youglish-term-trigger');
+    if (termTriggerBtn) termTriggerBtn.style.display = 'block'; // Ensure trigger is visible to try again
 }
 
 
@@ -2178,32 +2289,85 @@ document.addEventListener('DOMContentLoaded', async () => {
             const youglishContent = document.getElementById('youglish-tab-content');
             const youtubeContent = document.getElementById('youtube-tab-content');
             let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "Thẻ";
-
+        
+            // Clear previous content and destroy old widget if any
+            if (bottomSheetYouglishWidget && typeof bottomSheetYouglishWidget.destroy === 'function') {
+                try { bottomSheetYouglishWidget.destroy(); } catch (e) { console.warn("Error destroying Youglish widget on tab switch", e); }
+                bottomSheetYouglishWidget = null;
+            }
             if (youglishContent) youglishContent.innerHTML = ''; 
             if (youtubeContent) youtubeContent.innerHTML = '';
-
+        
             if (tabName === 'youglish') {
                 if (tabBtnYouglish) tabBtnYouglish.classList.add('active');
                 if (tabBtnYouTube) tabBtnYouTube.classList.remove('active');
                 if (youglishContent) youglishContent.classList.remove('hidden');
                 if (youtubeContent) youtubeContent.classList.add('hidden');
-
-                // Create a direct link to Youglish
-                const youglishLink = document.createElement('a');
-                youglishLink.href = `https://youglish.com/pronounce/${encodeURIComponent(cardTerm)}/english?feature=flashcard`;
-                youglishLink.target = "_blank"; // Open in a new tab
-                youglishLink.rel = "noopener noreferrer";
-                youglishLink.className = "block w-full text-center p-4 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-semibold rounded-md shadow-md transition duration-150 ease-in-out my-4";
-                youglishLink.innerHTML = `<i class="fas fa-external-link-alt mr-2"></i> Mở ${cardTerm} trên Youglish`;
-                
-                if (youglishContent) {
-                    youglishContent.appendChild(youglishLink);
-                    const infoText = document.createElement('p');
-                    infoText.className = "text-sm text-slate-600 dark:text-slate-400 text-center mt-2";
-                    infoText.textContent = "Nhấn vào link trên để nghe phát âm từ các video trên Youglish (mở trong tab mới).";
-                    youglishContent.appendChild(infoText);
+        
+                // 1. Create the term trigger button
+                const termTriggerBtn = document.createElement('button');
+                termTriggerBtn.id = 'youglish-term-trigger';
+                termTriggerBtn.className = 'block w-full text-center p-3 mb-3 bg-sky-500 hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-700 text-white font-semibold rounded-md shadow-md transition duration-150 ease-in-out';
+                termTriggerBtn.innerHTML = `<i class="fas fa-play-circle mr-2"></i> Nghe "${cardTerm}" trên Youglish`;
+                if (youglishContent) youglishContent.appendChild(termTriggerBtn);
+        
+                // 2. Create the Youglish widget parent container (initially hidden)
+                const ygWidgetParent = document.createElement('div');
+                ygWidgetParent.id = 'bs-yg-widget-parent';
+                ygWidgetParent.className = 'youglish-widget-container mt-2 rounded-md overflow-hidden shadow-lg'; // Added shadow for better visibility
+                ygWidgetParent.style.display = 'none';
+                ygWidgetParent.style.width = '100%';
+                ygWidgetParent.style.height = 'auto'; 
+                ygWidgetParent.style.aspectRatio = '16 / 9'; 
+                ygWidgetParent.style.backgroundColor = '#000'; 
+        
+                // 3. Create the Youglish widget anchor tag
+                const ygWidgetAnchor = document.createElement('a');
+                ygWidgetAnchor.id = 'bs-yg-widget'; // Unique ID for the widget instance
+                ygWidgetAnchor.className = 'youglish-widget';
+                ygWidgetAnchor.setAttribute('data-components', 'player,captions,controls'); 
+                ygWidgetAnchor.setAttribute('data-width', '100%');
+                ygWidgetAnchor.setAttribute('data-height', '100%'); 
+                ygWidgetAnchor.setAttribute('data-delay-load', 'true'); // IMPORTANT
+                ygWidgetAnchor.href = 'https://youglish.com'; // Fallback link
+                ygWidgetParent.appendChild(ygWidgetAnchor);
+                if (youglishContent) youglishContent.appendChild(ygWidgetParent);
+        
+                // 4. Add event listener to the trigger button
+                termTriggerBtn.addEventListener('click', async () => {
+                    if (!isYouglishApiReady) {
+                        showToast("Youglish API chưa sẵn sàng. Vui lòng thử lại sau giây lát.", 3000, 'error');
+                        // Try to initialize again if API becomes ready later
+                        if (typeof YG !== 'undefined' && YG.getWidget) isYouglishApiReady = true; // Re-check
+                        return;
+                    }
+        
+                    if (!bottomSheetYouglishWidget) {
+                        // Attempt to initialize the widget if it hasn't been already for this bottom sheet opening
+                        await initializeYouglishWidgetInBottomSheet('bs-yg-widget', cardTerm);
+                    }
+        
+                    if (bottomSheetYouglishWidget && typeof bottomSheetYouglishWidget.fetch === 'function') {
+                        try {
+                            console.log(`Fetching Youglish for: ${cardTerm}`);
+                            bottomSheetYouglishWidget.fetch(cardTerm, "english", "us"); 
+                            ygWidgetParent.style.display = 'block';
+                            // termTriggerBtn.style.display = 'none'; // Optionally hide the trigger
+                        } catch (error) {
+                            console.error("Error fetching Youglish term:", error);
+                            handleYouglishErrorInBottomSheet({ code: 'CUSTOM_FETCH_ERROR', message: "Lỗi khi tải video từ Youglish." });
+                        }
+                    } else {
+                         console.error("bottomSheetYouglishWidget is not initialized or fetch is not a function.");
+                         handleYouglishErrorInBottomSheet({ code: 'CUSTOM_INIT_ERROR', message: "Không thể khởi tạo Youglish. Vui lòng thử lại." });
+                    }
+                });
+        
+                // 5. Attempt to initialize the widget if API is ready and placeholder exists
+                if (isYouglishApiReady && document.getElementById('bs-yg-widget') && !bottomSheetYouglishWidget) {
+                    initializeYouglishWidgetInBottomSheet('bs-yg-widget');
                 }
-
+        
             } else if (tabName === 'youtube_custom') {
                 if (tabBtnYouTube) tabBtnYouTube.classList.add('active');
                 if (tabBtnYouglish) tabBtnYouglish.classList.remove('active');
@@ -2216,6 +2380,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const iframeContainer = document.createElement('div');
                         iframeContainer.className = 'video-iframe-container w-full'; 
                         const iframe = document.createElement('iframe');
+                        iframe.id = 'youtube-iframe'; // Add an ID for easier selection if needed
                         iframe.src = `https://www.youtube.com/embed/${videoId}`;
                         iframe.title = "YouTube video player";
                         iframe.frameBorder = "0";
@@ -2236,6 +2401,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         function closeBottomSheet() {
             if (!bottomSheet || !bottomSheetOverlay) return;
             
+            // Destroy Youglish widget if it exists
+            if (bottomSheetYouglishWidget && typeof bottomSheetYouglishWidget.destroy === 'function') { 
+                try {
+                    console.log("Destroying Youglish widget in bottom sheet.");
+                    bottomSheetYouglishWidget.destroy();
+                } catch(e) {
+                    console.warn("Error destroying Youglish widget during close", e);
+                }
+                bottomSheetYouglishWidget = null; // Reset the variable
+            }
+            // Clear the parent container of the Youglish widget
+            const ygWidgetParent = document.getElementById('bs-yg-widget-parent');
+            if (ygWidgetParent) {
+                ygWidgetParent.style.display = 'none';
+                ygWidgetParent.innerHTML = ''; // Remove the anchor tag to ensure it's re-created next time
+            }
+
             bottomSheet.classList.remove('active', 'bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode'); 
             bottomSheetOverlay.classList.remove('active');
             bottomSheet.style.paddingBottom = ''; 
@@ -2244,7 +2426,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => {
                 bottomSheet.classList.add('translate-y-full');
                 bottomSheetOverlay.classList.add('hidden');
-                const videoIframe = bottomSheetContent.querySelector('iframe');
+                const videoIframe = bottomSheetContent.querySelector('iframe#youtube-iframe'); // Specific to youtube
                 if (videoIframe) {
                     videoIframe.src = ''; 
                 }
