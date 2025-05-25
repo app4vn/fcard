@@ -279,20 +279,18 @@ async function handleAuthStateChangedInApp(user) {
     }
 
     if (typeof setupInitialCategoryAndSource === 'function') {
-        await setupInitialCategoryAndSource(); // This internally calls loadVocabularyData -> applyAllFilters -> updateFlashcard
+        await setupInitialCategoryAndSource(); 
         
-        // Ensure UI update happens after all async operations in setupInitialCategoryAndSource are truly complete
-        // and window.currentData is populated.
-        setTimeout(() => { // Use a timeout to allow promise queue to clear
+        setTimeout(() => { 
             if (window.currentData && window.currentData.length > 0 && window.currentIndex < window.currentData.length && typeof window.updateFlashcard === 'function') {
                  console.log("Auth Change: Delayed explicit updateFlashcard for current card index:", window.currentIndex);
-                 window.updateFlashcard(); // This will call updateStatusButtonsUI at its end
+                 window.updateFlashcard(); 
             } else {
                 console.log("Auth Change: Delayed call - Conditions not met for forcing updateFlashcard. Data length:", window.currentData?.length, "Index:", window.currentIndex);
-                 if (typeof updateStatusButtonsUI === 'function') updateStatusButtonsUI(); // Still update buttons if no card
-                 if (typeof updateCardInfo === 'function') updateCardInfo(); // And card info
+                 if (typeof updateStatusButtonsUI === 'function') updateStatusButtonsUI(); 
+                 if (typeof updateCardInfo === 'function') updateCardInfo(); 
             }
-        }, 0); // Timeout 0 can help defer execution until after current call stack clears
+        }, 0); 
     }
 
     if (typeof updateSidebarFilterVisibility === 'function') {
@@ -329,41 +327,29 @@ function showToast(message, duration = 3000, type = 'info') {
 function loadExampleSpeechRate() {
     const savedRate = localStorage.getItem(EXAMPLE_SPEECH_RATE_KEY);
     if (savedRate) {
-        currentExampleSpeechRate = parseFloat(savedRate);
+        const rate = parseFloat(savedRate);
+        if (!isNaN(rate) && rate >= 0.5 && rate <= 2.0) { // Giới hạn tốc độ hợp lý
+             currentExampleSpeechRate = rate;
+        }
     }
-    // UI update for buttons will be handled by updateFlashcard calling updateExampleSpeechRateButtonsUI
+    // Việc cập nhật UI cho dropdown sẽ được xử lý trong updateFlashcard
 }
 
 function saveExampleSpeechRate() {
     localStorage.setItem(EXAMPLE_SPEECH_RATE_KEY, currentExampleSpeechRate.toString());
-    // Optionally save to Firestore if user is logged in and appState is synced
     const userId = getCurrentUserId();
-    if (userId && appState.categoryStates) { // Assuming appState is available
-        // A simple way is to add it to a general settings part of appState
+    if (userId && appState) { 
         appState.userPreferences = appState.userPreferences || {};
         appState.userPreferences.exampleSpeechRate = currentExampleSpeechRate;
-        // The main saveAppState function will handle syncing to Firestore
-        saveAppState(); // Or a more specific save function if preferred
+        saveAppState(); 
     }
 }
 
-function updateExampleSpeechRateButtonsUI(container) {
-    const buttons = container.querySelectorAll('.speech-rate-btn-example');
-    buttons.forEach(btn => {
-        if (btn) {
-            if (parseFloat(btn.dataset.rate) === currentExampleSpeechRate) {
-                btn.classList.add('active');
-                 // Thêm style cho nút active: màu nền và màu chữ
-                btn.style.backgroundColor = '#0ea5e9'; // sky-500
-                btn.style.color = 'white';
-                btn.style.borderColor = '#0ea5e9';
-            } else {
-                btn.classList.remove('active');
-                // Reset style cho nút không active
-                btn.style.backgroundColor = ''; // Hoặc màu nền mặc định
-                btn.style.color = '#e0f2fe'; // Màu chữ mặc định cho mặt sau
-                btn.style.borderColor = '#7dd3fc'; // Màu viền mặc định
-            }
+function updateAllExampleSpeechRateDropdownsUI() {
+    const allDropdowns = document.querySelectorAll('.example-speech-rate-select');
+    allDropdowns.forEach(dropdown => {
+        if (dropdown) {
+            dropdown.value = currentExampleSpeechRate.toString();
         }
     });
 }
@@ -375,7 +361,7 @@ function speakText(txt, meta = [], cb = null) {
     if ('speechSynthesis' in window) {
         const u = new SpeechSynthesisUtterance(txt);
         u.lang = 'en-US';
-        u.rate = 1.0; // Default rate for main word/phrase
+        u.rate = 1.0; // Tốc độ mặc định cho từ chính
         u.pitch = 1;
         window.speechSynthesis.cancel();
         if (meta.length > 0) {
@@ -401,7 +387,7 @@ function speakExample(text, spansMeta) {
     if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'en-US';
-        utterance.rate = currentExampleSpeechRate; // Use specific rate for examples
+        utterance.rate = currentExampleSpeechRate; // Sử dụng tốc độ riêng cho ví dụ
         utterance.pitch = 1.0;
         window.speechSynthesis.cancel(); 
 
@@ -573,7 +559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         uiShowToastFunc: showToast
     });
 
-    loadExampleSpeechRate(); // Tải tốc độ đã lưu khi trang tải
+    loadExampleSpeechRate(); 
 
     if (!getCurrentUserId()) {
         await loadAppState();
@@ -1732,23 +1718,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                         meaningBlockDiv.appendChild(meaningNotesP);
                     }
 
-                    // --- START: Example Speech Rate Controls ---
-                    const exampleSpeechRateControlsDiv = document.createElement('div');
-                    exampleSpeechRateControlsDiv.className = 'example-speech-rate-controls flex items-center space-x-1 mb-2 ml-3';
-                    exampleSpeechRateControlsDiv.innerHTML = `
-                        <span class="text-xs text-sky-200 mr-1">Tốc độ VD:</span>
-                        <button data-rate="0.75" class="speech-rate-btn-example px-1.5 py-0.5 border text-xs rounded-md">Chậm</button>
-                        <button data-rate="1.0" class="speech-rate-btn-example px-1.5 py-0.5 border text-xs rounded-md">Thường</button>
-                        <button data-rate="1.25" class="speech-rate-btn-example px-1.5 py-0.5 border text-xs rounded-md">Nhanh</button>
-                    `;
-                    meaningBlockDiv.appendChild(exampleSpeechRateControlsDiv);
-                    updateExampleSpeechRateButtonsUI(exampleSpeechRateControlsDiv); // Cập nhật UI cho nút vừa tạo
-                    // --- END: Example Speech Rate Controls ---
+                    // --- START: Example Speech Rate Dropdown ---
+                    const rateControlContainer = document.createElement('div');
+                    rateControlContainer.className = 'example-speech-rate-dropdown-container flex items-center space-x-2 mb-2 ml-3';
+                    
+                    const rateLabel = document.createElement('span');
+                    rateLabel.className = 'text-xs text-sky-200';
+                    rateLabel.textContent = 'Tốc độ VD:';
+                    rateControlContainer.appendChild(rateLabel);
+
+                    const rateSelect = document.createElement('select');
+                    rateSelect.className = 'example-speech-rate-select bg-sky-700 text-white text-xs p-1 rounded-md border border-sky-500 focus:ring-sky-400 focus:border-sky-400';
+                    const rates = [
+                        { value: 0.75, text: 'Chậm' },
+                        { value: 1.0, text: 'Thường' },
+                        { value: 1.25, text: 'Nhanh' }
+                    ];
+                    rates.forEach(r => {
+                        const option = document.createElement('option');
+                        option.value = r.value.toString();
+                        option.textContent = r.text;
+                        if (r.value === currentExampleSpeechRate) {
+                            option.selected = true;
+                        }
+                        rateSelect.appendChild(option);
+                    });
+                    rateControlContainer.appendChild(rateSelect);
+                    meaningBlockDiv.appendChild(rateControlContainer);
+                    // --- END: Example Speech Rate Dropdown ---
 
 
                     if (mObj.examples && mObj.examples.length > 0) {
                         const examplesContainer = document.createElement('div');
-                        examplesContainer.className = "ml-3 mt-1"; // Giảm margin top một chút
+                        examplesContainer.className = "ml-3 mt-1"; 
                         const examplesListDiv = document.createElement('div');
                         examplesListDiv.className = "space-y-1.5";
                         examplesListDiv.dataset.meaningId = mObj.id;
@@ -1822,7 +1824,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         });
                                     }
                                     if (text) {
-                                        speakExample(text, localExampleSpansMeta); // Gọi hàm speakExample
+                                        speakExample(text, localExampleSpansMeta); 
                                     }
                                 });
                                 controlsDiv.appendChild(playSingleExBtn);
@@ -2334,8 +2336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         bottomSheet.classList.remove('bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
         bottomSheet.style.paddingBottom = '';
         
-        // Chỉ còn YouTube, không cần tabs phức tạp nữa
-        if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none';
+        if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none'; 
 
 
         if (viewType === 'default') {
@@ -2497,8 +2498,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 youtubeContentDiv.className = 'bottom-sheet-tab-content'; // Luôn hiển thị, không cần class hidden
                 bottomSheetContent.appendChild(youtubeContentDiv);
             }
-            // Trực tiếp gọi setActiveMediaTab cho YouTube
-            setActiveMediaTab('youtube_custom', cardItem);
+            setActiveMediaTab('youtube_custom', cardItem); // Mặc định là youtube
             hasActions = true;
         } else if (viewType === 'practice_options') {
              bottomSheetTitle.textContent = `Luyện tập: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
@@ -2536,19 +2536,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function setActiveMediaTab(tabName, cardItem) {
-        // const youglishContentDiv = document.getElementById('youglish-tab-content'); // Loại bỏ Youglish
         const youtubeContentDiv = document.getElementById('youtube-tab-content');
         let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "";
 
-        // if (youglishContentDiv) youglishContentDiv.classList.add('hidden'); // Loại bỏ
-        if (youtubeContentDiv) youtubeContentDiv.classList.add('hidden'); // Ẩn trước khi quyết định
-        // if (tabBtnYouglish) tabBtnYouglish.classList.remove('active'); // Loại bỏ
-        if (tabBtnYouTube) tabBtnYouTube.classList.remove('active'); 
+        if (youtubeContentDiv) youtubeContentDiv.classList.add('hidden'); // Ẩn trước
+        // Không còn tab Youglish để xử lý active class
         
-        // Không còn logic destroy Youglish ở đây
-
         if (tabName === 'youtube_custom') { 
-            // if (tabBtnYouTube) tabBtnYouTube.classList.add('active'); // Không cần nếu chỉ có YouTube
             if (youtubeContentDiv) {
                 youtubeContentDiv.classList.remove('hidden');
                 youtubeContentDiv.innerHTML = ''; 
@@ -2559,7 +2553,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const iframeContainer = document.createElement('div');
                         iframeContainer.className = 'video-iframe-container w-full';
                         const iframe = document.createElement('iframe');
-                        iframe.src = `https://www.youtube.com/embed/{videoId}`; // URL nhúng chuẩn cho YouTube
+                        iframe.src = `https://www.youtube.com/embed/${videoId}`; // URL nhúng chuẩn
                         iframe.title = "YouTube video player";
                         iframe.frameBorder = "0";
                         iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
@@ -2591,13 +2585,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         }
-        // Không còn case 'youglish'
     }
 
 
     function closeBottomSheet() {
         if (!bottomSheet || !bottomSheetOverlay) return;
-
         // Không còn logic Youglish
         bottomSheet.classList.remove('active', 'bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
         bottomSheetOverlay.classList.remove('active');
@@ -2870,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         if(exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.addEventListener('click', exitSingleCardPractice);
 
-        // Không còn tab Youglish, chỉ có tab YouTube (nếu cần)
+        // Chỉ còn event listener cho tab YouTube (nếu tabBtnYouTube còn được sử dụng)
         if(tabBtnYouTube) tabBtnYouTube.addEventListener('click', () => { 
             const currentCard = window.currentData[window.currentIndex];
             if(currentCard) setActiveMediaTab('youtube_custom', currentCard);
@@ -2950,7 +2942,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(cardTagsInput) cardTagsInput.addEventListener('focus', () => { const fullInputValue = cardTagsInput.value; const lastCommaIndex = fullInputValue.lastIndexOf(','); const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase(); const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase()); const filteredSuggestions = tagSuggestions.filter(tag => tag.toLowerCase().includes(currentTagQuery) && !alreadyAddedTags.includes(tag.toLowerCase()) ); if (filteredSuggestions.length > 0 || currentTagQuery.length === 0) { showAutocompleteSuggestions(cardTagsInput, filteredSuggestions.slice(0, 5), true); } });
         document.addEventListener('click', function(event) { const activeSuggestionsList = document.querySelector('.autocomplete-suggestions-list'); if (activeSuggestionsList) { const inputId = activeSuggestionsList.id.replace('-suggestions', ''); const inputElement = document.getElementById(inputId); if (inputElement && !inputElement.contains(event.target) && !activeSuggestionsList.contains(event.target)) { hideAutocompleteSuggestions(inputElement); } } });
 
-        // Hàm setupEventListeners không còn gọi setupAuthModalDOMListeners() vì nó đã được xử lý trong initializeAuthModule của auth.js
+        // Event delegation for example speech rate dropdowns
+        if (meaningDisplayContainer) {
+            meaningDisplayContainer.addEventListener('change', function(event) {
+                const targetSelect = event.target.closest('.example-speech-rate-select');
+                if (targetSelect) {
+                    currentExampleSpeechRate = parseFloat(targetSelect.value);
+                    saveExampleSpeechRate();
+                    updateAllExampleSpeechRateDropdownsUI(); // Cập nhật tất cả dropdown trên thẻ
+                }
+            });
+        }
     }
 
     async function setupInitialCategoryAndSource() {
