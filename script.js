@@ -87,15 +87,15 @@ let originalCurrentIndex = 0;
 // Youglish related
 let currentYouglishWidget = null;
 let isYouglishApiReady = false;
-const YOUGLISH_WIDGET_ID = 'app-youglish-widget-instance'; // ID cố định cho thẻ <a> của Youglish
+const YOUGLISH_WIDGET_ID = 'app-youglish-widget-instance'; 
 
 // Biến cho chức năng vuốt thẻ
 let touchStartX = 0;
 let touchEndX = 0;
 let touchStartY = 0;
 let touchEndY = 0;
-const swipeThreshold = 50;
-const swipeMaxVerticalOffset = 75;
+const swipeThreshold = 50; 
+const swipeMaxVerticalOffset = 75; 
 
 
 window.onYouglishAPIReady = function() {
@@ -970,7 +970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const firestoreStatus = await FirestoreService.getWebCardStatusFromFirestore(userId, getWebCardGlobalId(cardItem));
                 if (firestoreStatus) {
                     return {
-                        ...defaultCategoryState, // Nên là defaultCardStatus
+                        ...defaultCategoryState, 
                         ...firestoreStatus,
                         status: firestoreStatus.status || 'new',
                         isSuspended: firestoreStatus.isSuspended || false
@@ -1035,8 +1035,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
              console.log(`All cards loaded for user ${userId}:`, cards);
-        } else if (selectedDeckId === 'unassigned_cards') { // Load unassigned cards
-            cards = await FirestoreService.loadUserCardsFromFirestore(userId, null); // Pass null or a specific identifier for unassigned
+        } else if (selectedDeckId === 'unassigned_cards') { 
+            cards = await FirestoreService.loadUserCardsFromFirestore(userId, null); 
         }
         return cards.map(card => ({ ...card, isSuspended: card.isSuspended || false, videoUrl: card.videoUrl || null }));
     }
@@ -1116,19 +1116,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             generalNotes: cardGeneralNotesInput.value.trim(),
             videoUrl: cardVideoUrlInput.value.trim() || null,
             category: cardCategory,
-            deckId: assignedDeckId, // Sẽ là string rỗng nếu không chọn, hoặc ID của deck
+            deckId: assignedDeckId, 
             status: 'new',
-            lastReviewed: null, // FirestoreService sẽ xử lý serverTimestamp
+            lastReviewed: null, 
             reviewCount: 0,
-            nextReviewDate: serverTimestamp(), // Để Firestore tự đặt khi tạo mới
+            nextReviewDate: serverTimestamp(), 
             interval: 0,
             easeFactor: 2.5,
             repetitions: 0,
             isSuspended: false,
             updatedAt: serverTimestamp()
         };
-         if (!assignedDeckId && cardSourceSelect.value === 'user') { // Thẻ người dùng nhưng không gán vào deck nào
-            cardDataToSave.deckId = null; // Hoặc một giá trị đặc biệt cho "unassigned"
+         if (!assignedDeckId && cardSourceSelect.value === 'user') { 
+            cardDataToSave.deckId = null; 
         }
 
 
@@ -1149,7 +1149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert(editingCardId ? "Đã cập nhật thẻ!" : "Đã thêm thẻ mới!");
             closeAddEditModal();
             if (currentDatasetSource === 'user') {
-                await loadVocabularyData(categorySelect.value); // Tải lại dữ liệu cho category hiện tại
+                await loadVocabularyData(categorySelect.value); 
             }
         }
         currentEditingCardId = null;
@@ -1168,9 +1168,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const cardToDelete = window.currentData[window.currentIndex];
         const cardIdToDelete = cardToDelete.id;
-        const deckIdOfCard = cardToDelete.deckId; // deckId có thể là null cho thẻ chưa gán
+        const deckIdOfCard = cardToDelete.deckId; 
 
-        if (!cardIdToDelete) { // Không cần deckIdOfCard phải có giá trị
+        if (!cardIdToDelete) { 
             alert("Không thể xác định thẻ để xóa. Thiếu ID thẻ.");
             return;
         }
@@ -1188,11 +1188,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 newIndex = 0;
             }
 
-            await loadVocabularyData(categorySelect.value); // Tải lại dữ liệu
+            await loadVocabularyData(categorySelect.value); 
 
             if(window.currentData.length > 0){
                 window.currentIndex = Math.min(newIndex, window.currentData.length - 1);
-                window.currentIndex = Math.max(0, window.currentIndex); // Đảm bảo không âm
+                window.currentIndex = Math.max(0, window.currentIndex); 
             } else {
                 window.currentIndex = 0;
             }
@@ -2368,7 +2368,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!youglishContentDiv) {
                 youglishContentDiv = document.createElement('div');
                 youglishContentDiv.id = 'youglish-tab-content';
-                youglishContentDiv.className = 'bottom-sheet-tab-content'; // Sẽ được điều khiển hidden/display bởi setActiveMediaTab
+                youglishContentDiv.className = 'bottom-sheet-tab-content'; 
                 bottomSheetContent.appendChild(youglishContentDiv);
             }
             let youtubeContentDiv = document.getElementById('youtube-tab-content');
@@ -2405,13 +2405,13 @@ document.addEventListener('DOMContentLoaded', async () => {
              console.log("Không có hành động nào cho thẻ này trong bottom sheet (default view).");
              if (cardOptionsMenuBtn) cardOptionsMenuBtn.style.display = 'none';
              if (cardOptionsMenuBtnBack) cardOptionsMenuBtnBack.style.display = 'none';
-             return; // Không mở bottom sheet nếu không có gì để hiển thị
+             return; 
         }
 
         bottomSheetOverlay.classList.remove('hidden');
         bottomSheet.classList.remove('translate-y-full');
         requestAnimationFrame(() => {
-            bottomSheetOverlay.classList.add('active'); // Sử dụng class 'active' cho transition
+            bottomSheetOverlay.classList.add('active'); 
             bottomSheet.classList.add('active');
         });
     }
@@ -2419,18 +2419,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     function setActiveMediaTab(tabName, cardItem) {
         const youglishContentDiv = document.getElementById('youglish-tab-content');
         const youtubeContentDiv = document.getElementById('youtube-tab-content');
-        let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "Thẻ";
+        let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "";
 
-        // Ẩn tất cả các tab content trước
         if (youglishContentDiv) youglishContentDiv.classList.add('hidden');
         if (youtubeContentDiv) youtubeContentDiv.classList.add('hidden');
-        // Xóa class active khỏi các nút tab
         if (tabBtnYouglish) tabBtnYouglish.classList.remove('active');
         if (tabBtnYouTube) tabBtnYouTube.classList.remove('active');
-         // Hủy widget Youglish nếu nó đang tồn tại và không phải tab Youglish được chọn
+        
         if (tabName !== 'youglish' && currentYouglishWidget && typeof currentYouglishWidget.destroy === 'function') {
             console.log("[Youglish] Destroying Youglish widget as tab is changing or closing.");
-            currentYouglishWidget.destroy();
+            try { currentYouglishWidget.destroy(); } catch(e){ console.warn("Error destroying youglish widget", e)}
             currentYouglishWidget = null;
             const oldYgLink = document.getElementById(YOUGLISH_WIDGET_ID);
             if (oldYgLink && oldYgLink.parentNode) {
@@ -2438,74 +2436,64 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-
         if (tabName === 'youglish') {
             if (tabBtnYouglish) tabBtnYouglish.classList.add('active');
             if (youglishContentDiv) {
                 youglishContentDiv.classList.remove('hidden');
-                // Chỉ tạo thẻ <a> nếu chưa có, hoặc nếu widget đã bị destroy
                 let ygLink = document.getElementById(YOUGLISH_WIDGET_ID);
                 if (!ygLink) {
                     console.log("[Youglish] Creating <a> tag for Youglish widget with ID:", YOUGLISH_WIDGET_ID);
                     ygLink = document.createElement('a');
                     ygLink.id = YOUGLISH_WIDGET_ID;
-                    ygLink.className = 'youglish-widget'; // Class này quan trọng để Youglish tìm thấy
-                    ygLink.href = "https://youglish.com"; // Link bắt buộc
-                    // data-components="0" for video only, data-width="100%" are good defaults
-                    // Youglish sẽ tự động áp dụng các thuộc tính này từ thẻ script nếu không có trên thẻ <a>
-                    // Hoặc bạn có thể đặt chúng ở đây:
-                    // ygLink.dataset.components = "0"; 
-                    // ygLink.dataset.width="100%";
-
-                    youglishContentDiv.innerHTML = ''; // Xóa nội dung cũ trước khi thêm widget mới
+                    ygLink.className = 'youglish-widget';
+                    ygLink.href = "https://youglish.com";
+                    // Youglish widget sẽ tự điều chỉnh kích thước dựa trên container của nó nếu được thiết lập đúng
+                    // Đảm bảo youglishContentDiv hoặc video-iframe-container có kích thước.
+                    youglishContentDiv.innerHTML = ''; // Xóa nội dung cũ (như thông báo lỗi)
                     youglishContentDiv.appendChild(ygLink);
-                } else {
-                     console.log("[Youglish] Reusing existing <a> tag for Youglish widget with ID:", YOUGLISH_WIDGET_ID);
                 }
             }
 
             const initAndFetchYouglish = () => {
-                console.log(`[Youglish] initAndFetchYouglish called. API Ready: ${isYouglishApiReady}, YG defined: ${typeof YG !== "undefined"}`);
+                console.log(`[Youglish] initAndFetchYouglish. API Ready: ${isYouglishApiReady}, YG defined: ${typeof YG !== "undefined"}`);
                 if (typeof YG === 'undefined' || !YG.getWidget) {
-                    console.warn("[Youglish] YG.getWidget is not available yet. Youglish script might not be fully loaded.");
-                    if (youglishContentDiv) youglishContentDiv.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">YouGlish API chưa sẵn sàng, vui lòng đợi giây lát hoặc thử lại.</p>';
+                    console.warn("[Youglish] YG.getWidget is not available.");
+                    if (youglishContentDiv) youglishContentDiv.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">YouGlish API chưa tải xong. Vui lòng đợi...</p>';
                     return;
                 }
 
-                // Luôn cố gắng lấy widget instance, có thể nó đã được tạo trước đó nhưng bị ẩn
-                currentYouglishWidget = YG.getWidget(YOUGLISH_WIDGET_ID);
-                console.log("[Youglish] Got widget instance:", currentYouglishWidget);
-
-                if (currentYouglishWidget) {
-                    // Gắn listener một lần duy nhất hoặc đảm bảo không gắn trùng lặp
-                    // Cách đơn giản là luôn gắn, Youglish có thể tự xử lý việc này
-                    currentYouglishWidget.addEventListener("onError", function (event) {
-                        console.error('[Youglish] Widget Error:', event);
-                        const container = document.getElementById(YOUGLISH_WIDGET_ID)?.parentNode;
-                        if (container) container.innerHTML = '<p class="text-red-500 dark:text-red-400 p-4 text-center">Lỗi tải Youglish widget. Vui lòng thử lại.</p>';
-                    });
-                    currentYouglishWidget.addEventListener("onPlayerReady", function (event) {
-                         console.log('[Youglish] Player ready for:', cardTerm, event);
-                    });
-                    currentYouglishWidget.addEventListener("onFetchDone", function(event) {
-                        console.log('[Youglish] Fetch done for:', cardTerm, 'Results:', event.totalResults);
-                        const container = document.getElementById(YOUGLISH_WIDGET_ID)?.parentNode;
-                        if (event.totalResults === 0 && container) {
-                             if (!container.querySelector('iframe')) { // Chỉ hiển thị nếu chưa có video
+                if (!currentYouglishWidget) { // Chỉ khởi tạo widget nếu chưa có
+                    currentYouglishWidget = YG.getWidget(YOUGLISH_WIDGET_ID);
+                    console.log("[Youglish] Got widget instance:", currentYouglishWidget);
+                    if (currentYouglishWidget) {
+                        currentYouglishWidget.addEventListener("onError", function (event) {
+                            console.error('[Youglish] Widget Error:', event);
+                            const container = document.getElementById(YOUGLISH_WIDGET_ID)?.parentNode;
+                            if (container) container.innerHTML = '<p class="text-red-500 dark:text-red-400 p-4 text-center">Lỗi tải Youglish widget.</p>';
+                        });
+                        currentYouglishWidget.addEventListener("onPlayerReady", function (event) {
+                             console.log('[Youglish] Player ready for:', cardTerm, event);
+                        });
+                        currentYouglishWidget.addEventListener("onFetchDone", function(event) {
+                            console.log('[Youglish] Fetch done for:', cardTerm, 'Results:', event.totalResults);
+                             const container = document.getElementById(YOUGLISH_WIDGET_ID)?.parentNode;
+                            if (event.totalResults === 0 && container && !container.querySelector('iframe')) {
                                 container.innerHTML = '<p class="text-slate-500 dark:text-slate-400 p-4 text-center">Không tìm thấy kết quả cho từ này trên Youglish.</p>';
                             }
-                        }
-                    });
-                    
+                        });
+                    }
+                }
+                
+                if (currentYouglishWidget) {
                     console.log("[Youglish] Fetching for term:", cardTerm);
                     currentYouglishWidget.fetch(cardTerm, "english", "us");
                 } else {
-                    console.error("[Youglish] Widget instance is null after YG.getWidget, cannot fetch.");
-                    if (youglishContentDiv) youglishContentDiv.innerHTML = '<p class="text-red-500 dark:text-red-400 p-4 text-center">Không thể khởi tạo Youglish widget. API có thể chưa tải xong.</p>';
+                    console.error("[Youglish] Widget instance is null, cannot fetch.");
+                    if (youglishContentDiv) youglishContentDiv.innerHTML = '<p class="text-red-500 dark:text-red-400 p-4 text-center">Không thể khởi tạo Youglish widget.</p>';
                 }
             };
 
-            if (isYouglishApiReady && typeof YG !== 'undefined') { // Kiểm tra cả YG
+            if (isYouglishApiReady && typeof YG !== 'undefined') {
                 initAndFetchYouglish();
             } else {
                 console.log("[Youglish] API not ready or YG not defined. Queuing widget creation.");
@@ -2516,7 +2504,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (tabBtnYouTube) tabBtnYouTube.classList.add('active');
             if (youtubeContentDiv) {
                 youtubeContentDiv.classList.remove('hidden');
-                youtubeContentDiv.innerHTML = ''; // Xóa nội dung cũ
+                youtubeContentDiv.innerHTML = ''; 
 
                 if (cardItem.videoUrl) {
                     const videoId = extractYouTubeVideoId(cardItem.videoUrl);
@@ -2524,7 +2512,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const iframeContainer = document.createElement('div');
                         iframeContainer.className = 'video-iframe-container w-full';
                         const iframe = document.createElement('iframe');
-                        iframe.src = `https://www.youtube.com/results?search_query=[encoded_card_term]{videoId}`;
+                        iframe.src = `https://www.youtube.com/embed/{videoId}`; // URL đã khôi phục
                         iframe.title = "YouTube video player";
                         iframe.frameBorder = "0";
                         iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
@@ -2536,19 +2524,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 } else {
                      const searchButtonContainer = document.createElement('div');
-                     searchButtonContainer.className = 'p-4 text-center';
+                     searchButtonContainer.className = 'p-4 text-center'; 
 
                      const pMessage = document.createElement('p');
-                     pMessage.className = 'text-slate-500 dark:text-slate-400 mb-3';
+                     pMessage.className = 'text-slate-500 dark:text-slate-400 mb-3'; 
                      pMessage.textContent = 'Chưa có video YouTube nào được gán. Bạn có thể thêm link khi sửa thẻ, hoặc:';
                      searchButtonContainer.appendChild(pMessage);
 
                      const searchButton = document.createElement('button');
-                     searchButton.className = 'py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md shadow-sm flex items-center justify-center mx-auto';
+                     searchButton.className = 'py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md shadow-sm flex items-center justify-center mx-auto'; 
                      const searchTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "";
+                     const youtubeSearchTerm = `học từ ${searchTerm}`; // Thêm "học từ"
                      searchButton.innerHTML = `<i class="fab fa-youtube mr-2"></i> Tìm trên YouTube với từ khóa "${searchTerm}"`;
                      searchButton.onclick = () => {
-                         window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchTerm)}`, '_blank');
+                         window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSearchTerm)}`, '_blank');
                      };
                      searchButtonContainer.appendChild(searchButton);
                      youtubeContentDiv.appendChild(searchButtonContainer);
@@ -2570,7 +2559,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             currentYouglishWidget = null;
         }
-        // Luôn xóa thẻ <a> của Youglish để đảm bảo nó được tạo lại đúng cách khi mở lại
         const oldYgLink = document.getElementById(YOUGLISH_WIDGET_ID);
         if (oldYgLink && oldYgLink.parentNode) {
              oldYgLink.parentNode.removeChild(oldYgLink);
@@ -2684,14 +2672,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
         if(sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
 
-        // --- START: Gắn event listener cho vuốt thẻ ---
         if (cardFrontElement) { 
             cardFrontElement.addEventListener('touchstart', handleTouchStart, { passive: true }); 
             cardFrontElement.addEventListener('touchmove', handleTouchMove, { passive: true });
             cardFrontElement.addEventListener('touchend', handleTouchEnd, false); 
         }
-        // --- END: Gắn event listener cho vuốt thẻ ---
-
+        
         if(cardSourceSelect) cardSourceSelect.addEventListener('change', async (e)=>{
             currentDatasetSource=e.target.value;
             const userId = getCurrentUserId();
@@ -2933,9 +2919,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(cardTagsInput) cardTagsInput.addEventListener('focus', () => { const fullInputValue = cardTagsInput.value; const lastCommaIndex = fullInputValue.lastIndexOf(','); const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase(); const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase()); const filteredSuggestions = tagSuggestions.filter(tag => tag.toLowerCase().includes(currentTagQuery) && !alreadyAddedTags.includes(tag.toLowerCase()) ); if (filteredSuggestions.length > 0 || currentTagQuery.length === 0) { showAutocompleteSuggestions(cardTagsInput, filteredSuggestions.slice(0, 5), true); } });
         document.addEventListener('click', function(event) { const activeSuggestionsList = document.querySelector('.autocomplete-suggestions-list'); if (activeSuggestionsList) { const inputId = activeSuggestionsList.id.replace('-suggestions', ''); const inputElement = document.getElementById(inputId); if (inputElement && !inputElement.contains(event.target) && !activeSuggestionsList.contains(event.target)) { hideAutocompleteSuggestions(inputElement); } } });
 
-        // Dòng này đã bị xóa ở lượt trước vì `setupAuthModalDOMListeners` không được export từ `auth.js`
-        // và logic của nó đã nằm trong `initializeAuthModule`
-        // setupAuthModalDOMListeners(); 
     }
 
     async function setupInitialCategoryAndSource() {
