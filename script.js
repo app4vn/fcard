@@ -69,7 +69,7 @@ let tagSuggestions = [];
 let currentDatasetSource = 'web';
 window.currentData = [];
 window.currentIndex = 0;
-let currentWordSpansMeta = [];
+let currentWordSpansMeta = []; // For main word highlighting
 let activeMasterList = [];
 let practiceType = "off";
 let currentInputMode = 'manual';
@@ -78,10 +78,6 @@ let currentCorrectAnswerForPractice = '';
 let userDecks = [];
 let learningCardNextButtonTimer = null;
 let learningCardCountdownInterval = null;
-// Loại bỏ các biến liên quan đến hàng đợi phát âm ví dụ
-// let exampleSpeechQueue = [];
-// let currentExampleSpeechIndex = 0;
-// let isSpeakingExampleQueue = false;
 let currentEditingCardId = null;
 let currentEditingDeckId = null;
 let isSingleCardPracticeMode = false;
@@ -1494,7 +1490,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(pronunciationDisplay) pronunciationDisplay.style.display = 'none';
             if(tagsDisplayFront) tagsDisplayFront.style.display = 'none';
             if(speakerBtn) speakerBtn.style.display = 'none';
-            // if(speakerExampleBtn) speakerExampleBtn.style.display = 'none'; // Đã ẩn ở trên
             if(flipBtn) flipBtn.disabled = true;
             if(flipIconFront) flipIconFront.style.display = 'none';
             if(flipIconBack) flipIconBack.style.display = 'none';
@@ -1503,16 +1498,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(pronunciationDisplay) pronunciationDisplay.style.display = 'block';
             if(tagsDisplayFront) tagsDisplayFront.style.display = 'block';
             if(speakerBtn) speakerBtn.style.display = 'block';
-            // if(speakerExampleBtn) speakerExampleBtn.style.display = 'none'; // Đảm bảo ẩn
             if(flipBtn) flipBtn.disabled = (practiceType !== "off");
             if(flipIconFront) flipIconFront.style.display = (practiceType === "off") ? 'block' : 'none';
             if(flipIconBack) flipIconBack.style.display = (practiceType === "off") ? 'block' : 'none';
 
 
-            currentWordSpansMeta = []; let accCC = 0;
+            currentWordSpansMeta = []; let accCC = 0; // Reset for main word
             const iCV = item.category;
             const firstMeaningText = (item.meanings && item.meanings.length > 0) ? item.meanings[0].text : '';
-            let textForTTS;
+            let textForTTS; // For the main word/phrase on the front
             let mainTermToDisplay = '';
 
             if (iCV === 'phrasalVerbs') mainTermToDisplay = item.phrasalVerb || '';
@@ -1520,22 +1514,50 @@ document.addEventListener('DOMContentLoaded', async () => {
             else mainTermToDisplay = item.word || '';
 
             if (practiceType === 'word_quiz') {
-                textForTTS = firstMeaningText; // Câu hỏi là nghĩa, TTS đọc nghĩa
+                // Question is the meaning, TTS should read the meaning
+                textForTTS = firstMeaningText;
                 const mTSp = document.createElement('span');
-                mTSp.className = 'text-3xl sm:text-4xl font-bold'; // Giữ style cho câu hỏi
-                const segs = firstMeaningText.split(/(\s+)/); // Tách từ cho highlight (nếu cần)
-                segs.forEach(s => { if (s.trim() !== '') { const wS = document.createElement('span'); wS.textContent = s; mTSp.appendChild(wS); currentWordSpansMeta.push({ element: wS, start: accCC, length: s.length }); } else mTSp.appendChild(document.createTextNode(s)); accCC += s.length; });
+                mTSp.className = 'text-3xl sm:text-4xl font-bold';
+                // Prepare spans for highlighting the meaning if needed (though usually we highlight the target word)
+                // For simplicity, we'll just display it. If meaning highlight is needed, this part needs more work.
+                mTSp.textContent = firstMeaningText;
                 if(wordDisplay) wordDisplay.appendChild(mTSp);
+
                 if(pronunciationDisplay) pronunciationDisplay.style.display = 'none';
                 if(tagsDisplayFront) tagsDisplayFront.style.display = 'none';
-                if(speakerBtn) speakerBtn.style.display = 'none'; // Không có nút loa cho câu hỏi (nghĩa)
-            } else { // Các chế độ khác, hiển thị từ/cụm từ
-                let bTFM = ""; // buildTextForMainDisplay
-                const pts = mainTermToDisplay.split(/(\([^)]+\))/g).filter(p => p); // Tách phần trong ngoặc
-                pts.forEach((p, pI) => { const iD = p.startsWith('(') && p.endsWith(')'); const cS = document.createElement('span'); cS.className = iD ? 'text-xl opacity-80 ml-1' : 'text-3xl sm:text-4xl font-bold'; const segs = p.split(/(\s+)/); segs.forEach(s => { bTFM += s; if (s.trim() !== '') { const wS = document.createElement('span'); wS.textContent = s; cS.appendChild(wS); currentWordSpansMeta.push({ element: wS, start: bTFM.length - s.length, length: s.length }); } else cS.appendChild(document.createTextNode(s)); }); if(wordDisplay) wordDisplay.appendChild(cS); if (pI < pts.length - 1) { const nPID = pts[pI + 1].startsWith('(') && pts[pI + 1].endsWith(')'); if (!p.endsWith(' ') && !pts[pI + 1].startsWith(' ') && !(iD && nPID)) { if(wordDisplay) wordDisplay.appendChild(document.createTextNode(' ')); bTFM += ' '; } } });
-                textForTTS = bTFM; // Text cho TTS là từ/cụm từ chính
+                if(speakerBtn) speakerBtn.style.display = 'none';
+            } else {
+                // Display the main word/phrase and prepare it for TTS highlighting
+                let bTFM = "";
+                const pts = mainTermToDisplay.split(/(\([^)]+\))/g).filter(p => p);
+                pts.forEach((p, pI) => {
+                    const iD = p.startsWith('(') && p.endsWith(')');
+                    const cS = document.createElement('span');
+                    cS.className = iD ? 'text-xl opacity-80 ml-1' : 'text-3xl sm:text-4xl font-bold';
+                    const segs = p.split(/(\s+)/); // Split by space to wrap words in spans
+                    segs.forEach(s => {
+                        bTFM += s;
+                        if (s.trim() !== '') {
+                            const wS = document.createElement('span');
+                            wS.textContent = s;
+                            cS.appendChild(wS);
+                            currentWordSpansMeta.push({ element: wS, start: bTFM.length - s.length, length: s.length });
+                        } else {
+                            cS.appendChild(document.createTextNode(s)); // Add space node
+                        }
+                    });
+                    if(wordDisplay) wordDisplay.appendChild(cS);
+                    if (pI < pts.length - 1) {
+                        const nPID = pts[pI+1].startsWith('(') && pts[pI+1].endsWith(')');
+                        if (!p.endsWith(' ') && !pts[pI+1].startsWith(' ') && !(iD && nPID) ) {
+                             if(wordDisplay) wordDisplay.appendChild(document.createTextNode(' '));
+                             bTFM += ' ';
+                        }
+                    }
+                });
+                textForTTS = bTFM;
             }
-            if(wordDisplay) wordDisplay.dataset.ttsText = textForTTS; // Lưu text cho nút loa chính
+            if(wordDisplay) wordDisplay.dataset.ttsText = textForTTS;
             if(pronunciationDisplay) pronunciationDisplay.textContent = item.pronunciation || '';
             if ((iCV === 'phrasalVerbs' || iCV === 'collocations') && item.tags && practiceType !== 'word_quiz') {
                 const dT = item.tags.filter(t => t && t !== 'all' && !t.startsWith('particle_') && tagDisplayNames[t]).map(t => tagDisplayNames[t]);
@@ -1602,32 +1624,72 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const eP = document.createElement('p');
                             eP.className="example-eng-on-card";
 
-                            const textSpan = document.createElement('span');
-                            textSpan.className = 'text-content'; // Để chứa text và label
+                            const textContentDiv = document.createElement('div'); // Container for text and label
+                            textContentDiv.className = 'text-content flex-grow'; // Allow it to take space
+
                             const enLabel = document.createElement('span');
                             enLabel.className = 'example-label';
                             enLabel.textContent = 'EN: ';
-                            textSpan.appendChild(enLabel);
-                            textSpan.appendChild(document.createTextNode(ex.eng));
-                            eP.appendChild(textSpan);
+                            textContentDiv.appendChild(enLabel);
 
-                            // --- START: Thêm nút Play cho từng ví dụ ---
+                            // --- START: Karaoke highlight for example sentence ---
+                            const exampleText = ex.eng.trim();
+                            const exampleSpansMeta = [];
+                            let exampleAccCC = 0;
+                            if (exampleText) {
+                                const exampleWords = exampleText.split(/(\s+)/); // Split by space, keeping spaces
+                                exampleWords.forEach(wordPart => {
+                                    if (wordPart.trim() !== '') {
+                                        const wordSpan = document.createElement('span');
+                                        wordSpan.textContent = wordPart;
+                                        textContentDiv.appendChild(wordSpan);
+                                        exampleSpansMeta.push({ element: wordSpan, start: exampleAccCC, length: wordPart.length });
+                                    } else {
+                                        textContentDiv.appendChild(document.createTextNode(wordPart)); // Add space node
+                                    }
+                                    exampleAccCC += wordPart.length;
+                                });
+                            } else {
+                                textContentDiv.appendChild(document.createTextNode(exampleText)); // If empty, just add
+                            }
+                            eP.appendChild(textContentDiv);
+                            // --- END: Karaoke highlight for example sentence ---
+
+
+                            const controlsDiv = document.createElement('div'); // Container for buttons
+                            controlsDiv.className = 'flex items-center ml-2'; // flex, items-center, margin-left
+
                             if (ex.eng && ex.eng.trim()) {
                                 const playSingleExBtn = document.createElement('button');
-                                playSingleExBtn.className = 'speak-single-example-btn text-sky-300 hover:text-sky-100 p-1 transition-colors duration-150'; // Thêm class Tailwind
+                                playSingleExBtn.className = 'speak-single-example-btn text-sky-300 hover:text-sky-100 p-1 transition-colors duration-150';
                                 playSingleExBtn.innerHTML = '<i class="fas fa-play"></i>';
                                 playSingleExBtn.title = 'Phát âm ví dụ này';
                                 playSingleExBtn.dataset.textToSpeak = ex.eng.trim();
                                 playSingleExBtn.addEventListener('click', (e) => {
                                     e.stopPropagation();
                                     const text = e.currentTarget.dataset.textToSpeak;
+                                    // Retrieve the correct spansMeta for this specific example
+                                    const clickedExampleElement = e.currentTarget.closest('.example-eng-on-card').querySelector('.text-content');
+                                    const localExampleSpansMeta = [];
+                                    let localAccCC = 0;
+                                    if (clickedExampleElement && text) {
+                                        const words = text.split(/(\s+)/);
+                                        const childSpans = Array.from(clickedExampleElement.querySelectorAll('span:not(.example-label)'));
+                                        let spanIndex = 0;
+                                        words.forEach(wp => {
+                                            if(wp.trim() !== '' && childSpans[spanIndex]) {
+                                                localExampleSpansMeta.push({element: childSpans[spanIndex], start: localAccCC, length: wp.length});
+                                                spanIndex++;
+                                            }
+                                            localAccCC += wp.length;
+                                        });
+                                    }
                                     if (text) {
-                                        speakText(text);
+                                        speakText(text, localExampleSpansMeta);
                                     }
                                 });
-                                eP.appendChild(playSingleExBtn); // Thêm vào sau text
+                                controlsDiv.appendChild(playSingleExBtn);
                             }
-                            // --- END: Thêm nút Play cho từng ví dụ ---
 
                             const copyBtn = document.createElement('button');
                             copyBtn.className = 'copy-example-btn';
@@ -1645,8 +1707,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     showToast('Lỗi sao chép vào clipboard!', 2000, 'error');
                                 });
                             };
-                            eP.appendChild(copyBtn);
+                            controlsDiv.appendChild(copyBtn);
+                            eP.appendChild(controlsDiv); // Add controls (play, copy) to the example paragraph
                             exD.appendChild(eP);
+
 
                             if(ex.vie){
                                 const vP = document.createElement('p');
@@ -1705,7 +1769,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             else { if(notesDisplay) notesDisplay.innerHTML = ''; if(notesSectionEl) notesSectionEl.style.display = 'none'; }
 
             if(speakerBtn) speakerBtn.disabled = !textForTTS.trim() || (practiceType === 'word_quiz');
-            // speakerExampleBtn đã bị ẩn, không cần cập nhật trạng thái disabled của nó nữa.
             updateStatusButtonsUI();
         }
         updateCardInfo();
@@ -2703,22 +2766,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
         if(nextBtn) nextBtn.addEventListener('click', ()=>{
-            // if(isSpeakingExampleQueue){isSpeakingExampleQueue=false;window.speechSynthesis.cancel();speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));}
             window.speechSynthesis.cancel(); // Hủy bỏ mọi phát âm khi chuyển thẻ
             if(nextBtn.disabled)return;clearLearningTimer();if(window.currentIndex<window.currentData.length-1){window.currentIndex++;getCategoryState(currentDatasetSource,categorySelect.value).currentIndex=window.currentIndex;saveAppState();window.updateFlashcard();}else if(practiceType!=="off"&&currentAnswerChecked&&window.currentIndex>=window.currentData.length-1)applyAllFilters();});
         if(prevBtn) prevBtn.addEventListener('click', ()=>{
-            // if(isSpeakingExampleQueue){isSpeakingExampleQueue=false;window.speechSynthesis.cancel();speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));}
             window.speechSynthesis.cancel(); // Hủy bỏ mọi phát âm khi chuyển thẻ
             clearLearningTimer();if(window.currentIndex>0){window.currentIndex--;getCategoryState(currentDatasetSource,categorySelect.value).currentIndex=window.currentIndex;saveAppState();window.updateFlashcard();}});
         if(speakerBtn) speakerBtn.addEventListener('click', (e)=>{
             e.stopPropagation();
-            // if(isSpeakingExampleQueue){isSpeakingExampleQueue=false;window.speechSynthesis.cancel();speakerExampleBtn.disabled=!(window.currentData[window.currentIndex]&&window.currentData[window.currentIndex].meanings.some(m=>m.examples&&m.examples.length>0));}
             window.speechSynthesis.cancel();
             const txt=wordDisplay.dataset.ttsText;
             if(txt&&!speakerBtn.disabled)speakText(txt,currentWordSpansMeta);});
 
-        // Loại bỏ event listener cho speakerExampleBtn cũ
-        // if(speakerExampleBtn) speakerExampleBtn.addEventListener('click', (e)=>{e.stopPropagation();window.speechSynthesis.cancel();isSpeakingExampleQueue=false;currentExampleSpeechIndex=0;exampleSpeechQueue=[];const item=window.currentData[window.currentIndex];if(item&&item.meanings&&!speakerExampleBtn.disabled){item.meanings.forEach(m=>{if(m.examples){m.examples.forEach(ex=>{if(ex.eng&&ex.eng.trim())exampleSpeechQueue.push({text:ex.eng.trim(),spansMeta:[]});});}});if(exampleSpeechQueue.length>0){isSpeakingExampleQueue=true;speakerExampleBtn.disabled=true;playNextExampleInQueue();}}});
 
         if(btnSrsAgain) btnSrsAgain.addEventListener('click', () => processSrsRatingWrapper('again'));
         if(btnSrsHard) btnSrsHard.addEventListener('click', () => processSrsRatingWrapper('hard'));
