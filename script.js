@@ -33,7 +33,7 @@ const db = getFirestore(fbApp);
 // KHAI BÁO CÁC BIẾN DOM SẼ ĐƯỢC SỬ DỤNG Ở PHẠM VI MODULE
 let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDisplay,
     pronunciationDisplay, meaningDisplayContainer, notesDisplay, prevBtn, flipBtn,
-    nextBtn, currentCardIndexDisplay, totalCardsDisplay, speakerBtn, speakerExampleBtn, // speakerExampleBtn sẽ được ẩn
+    nextBtn, currentCardIndexDisplay, totalCardsDisplay, speakerBtn, speakerExampleBtn,
     tagFilterContainer, tagSelect, searchInput, baseVerbFilterContainer, baseVerbSelect,
     practiceTypeSelect, practiceArea, multipleChoiceOptionsContainer, feedbackMessage,
     filterCardStatusSelect,
@@ -60,7 +60,7 @@ let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDis
     actionBtnNotes, actionBtnMedia, actionBtnPracticeCard,
     exitSingleCardPracticeBtn,
     bottomSheetTabsContainer, tabBtnYouglish, tabBtnYouTube,
-    flipIconFront, flipIconBack;
+    flipIconFront, flipIconBack, cardFrontElement; // Thêm cardFrontElement
 
 
 // KHAI BÁO CÁC BIẾN TRẠNG THÁI ỨNG DỤNG Ở PHẠM VI MODULE
@@ -85,6 +85,15 @@ let originalCurrentData = [];
 let originalCurrentIndex = 0;
 let currentYouglishWidget = null;
 let isYouglishApiReady = false;
+
+// Biến cho chức năng vuốt thẻ
+let touchStartX = 0;
+let touchEndX = 0;
+let touchStartY = 0;
+let touchEndY = 0;
+const swipeThreshold = 50; // Ngưỡng vuốt ngang (pixels)
+const swipeMaxVerticalOffset = 75; // Ngưỡng di chuyển dọc tối đa cho phép khi vuốt ngang
+
 
 window.onYouglishAPIReady = function() {
     console.log("Youglish API is ready.");
@@ -320,6 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     cardSourceSelect = document.getElementById('card-source-select');
     categorySelect = document.getElementById('category');
     flashcardElement = document.getElementById('flashcard');
+    cardFrontElement = flashcardElement.querySelector('.card-front'); // Lấy card-front
     wordDisplay = document.getElementById('word-display');
     pronunciationDisplay = document.getElementById('pronunciation-display');
     meaningDisplayContainer = document.getElementById('meaning-display-container');
@@ -449,7 +459,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupInitialCategoryAndSource();
-    setupEventListeners();
+    setupEventListeners(); // Bao gồm cả việc gắn listener cho vuốt thẻ
 
     function generateUniqueId(prefix = 'id') {
         return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`;
@@ -1161,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let newIndex = window.currentIndex;
             if(window.currentIndex >= window.currentData.length - 1 && window.currentIndex > 0) {
                 newIndex = window.currentIndex - 1;
-            } else if (window.currentData.length - 1 === 0) { // Sửa lỗi logic ở đây
+            } else if (window.currentData.length - 1 === 0) {
                 newIndex = 0;
             }
 
@@ -1180,7 +1190,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     function shuffleArray(arr){const nA=[...arr];for(let i=nA.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[nA[i],nA[j]]=[nA[j],nA[i]];}return nA;}
     function speakText(txt,meta=[],cb=null){if(!txt||!txt.trim()){if(cb)cb();return;}if('speechSynthesis'in window){const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=0.9;u.pitch=1;window.speechSynthesis.cancel();if(meta.length>0){u.onstart=()=>meta.forEach(m=>m.element.classList.remove('highlighted-word'));u.onboundary=e=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));let f=false;for(const m of meta){if(e.charIndex>=m.start&&e.charIndex<m.start+m.length){m.element.classList.add('highlighted-word');f=true;break;}}if(!f&&meta.length>0){for(let i=meta.length-1;i>=0;i--){const m=meta[i];if(e.charIndex>=m.start){if((i===meta.length-1)||(e.charIndex<meta[i+1].start)){m.element.classList.add('highlighted-word');break;}}}}};u.onend=()=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));if(cb)cb();};u.onerror=e=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));console.error("Lỗi phát âm:", e);if(cb)cb();};}else{u.onend=()=>{if(cb)cb();};u.onerror=e=>{console.error("Lỗi phát âm:", e);if(cb)cb();};}window.speechSynthesis.speak(u);}else{console.warn("Trình duyệt không hỗ trợ Speech Synthesis.");if(cb)cb();}}
-    // Loại bỏ hàm playNextExampleInQueue()
     function populateBaseVerbFilter(arr){const bV=new Set();arr.forEach(i=>{if(i.baseVerb)bV.add(i.baseVerb);});baseVerbSelect.innerHTML='';const oA=document.createElement('option');oA.value='all';oA.textContent='Tất cả từ gốc';baseVerbSelect.appendChild(oA);const sBV=Array.from(bV).sort((a,b)=>a.localeCompare(b,'en'));sBV.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v.charAt(0).toUpperCase()+v.slice(1);baseVerbSelect.appendChild(o);});}
     function populateTagFilter(arr){const tT=new Set();arr.forEach(i=>{if(i.tags&&Array.isArray(i.tags)){i.tags.forEach(t=>{if(tagDisplayNames[t]&&t!=='all'&&!t.startsWith('particle_'))tT.add(t);});}});tagSelect.innerHTML='';const oA=document.createElement('option');oA.value='all';oA.textContent=tagDisplayNames["all"]||'Tất cả chủ đề';tagSelect.appendChild(oA);const sTK=Array.from(tT).sort((a,b)=>(tagDisplayNames[a]||a).localeCompare(tagDisplayNames[b]||b,'vi'));sTK.forEach(tK=>{const o=document.createElement('option');o.value=tK;o.textContent=tagDisplayNames[tK]||(tK.charAt(0).toUpperCase()+tK.slice(1));tagSelect.appendChild(o);});}
 
@@ -1514,12 +1523,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             else mainTermToDisplay = item.word || '';
 
             if (practiceType === 'word_quiz') {
-                // Question is the meaning, TTS should read the meaning
                 textForTTS = firstMeaningText;
                 const mTSp = document.createElement('span');
                 mTSp.className = 'text-3xl sm:text-4xl font-bold';
-                // Prepare spans for highlighting the meaning if needed (though usually we highlight the target word)
-                // For simplicity, we'll just display it. If meaning highlight is needed, this part needs more work.
                 mTSp.textContent = firstMeaningText;
                 if(wordDisplay) wordDisplay.appendChild(mTSp);
 
@@ -1527,14 +1533,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if(tagsDisplayFront) tagsDisplayFront.style.display = 'none';
                 if(speakerBtn) speakerBtn.style.display = 'none';
             } else {
-                // Display the main word/phrase and prepare it for TTS highlighting
                 let bTFM = "";
                 const pts = mainTermToDisplay.split(/(\([^)]+\))/g).filter(p => p);
                 pts.forEach((p, pI) => {
                     const iD = p.startsWith('(') && p.endsWith(')');
                     const cS = document.createElement('span');
                     cS.className = iD ? 'text-xl opacity-80 ml-1' : 'text-3xl sm:text-4xl font-bold';
-                    const segs = p.split(/(\s+)/); // Split by space to wrap words in spans
+                    const segs = p.split(/(\s+)/); 
                     segs.forEach(s => {
                         bTFM += s;
                         if (s.trim() !== '') {
@@ -1543,7 +1548,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             cS.appendChild(wS);
                             currentWordSpansMeta.push({ element: wS, start: bTFM.length - s.length, length: s.length });
                         } else {
-                            cS.appendChild(document.createTextNode(s)); // Add space node
+                            cS.appendChild(document.createTextNode(s)); 
                         }
                     });
                     if(wordDisplay) wordDisplay.appendChild(cS);
@@ -1611,53 +1616,49 @@ document.addEventListener('DOMContentLoaded', async () => {
                         examplesListDiv.className = "space-y-1.5";
                         examplesListDiv.dataset.meaningId = mObj.id;
 
-                        const maxVisibleExamples = 2;
+                        const maxVisibleExamples = 2; // Hiển thị 2 ví dụ mặc định
                         const totalExamples = mObj.examples.length;
 
                         mObj.examples.forEach((ex, exIdx) => {
                             const exD = document.createElement('div');
                             exD.className="example-item-on-card";
-                            if (exIdx >= maxVisibleExamples) {
+                            if (exIdx >= maxVisibleExamples) { // Ẩn nếu > 2 (index 0, 1 sẽ hiển thị)
                                 exD.classList.add('hidden');
                             }
 
                             const eP = document.createElement('p');
                             eP.className="example-eng-on-card";
 
-                            const textContentDiv = document.createElement('div'); // Container for text and label
-                            textContentDiv.className = 'text-content flex-grow'; // Allow it to take space
+                            const textContentDiv = document.createElement('div'); 
+                            textContentDiv.className = 'text-content flex-grow'; 
 
                             const enLabel = document.createElement('span');
                             enLabel.className = 'example-label';
                             enLabel.textContent = 'EN: ';
                             textContentDiv.appendChild(enLabel);
 
-                            // --- START: Karaoke highlight for example sentence ---
                             const exampleText = ex.eng.trim();
-                            const exampleSpansMeta = [];
                             let exampleAccCC = 0;
                             if (exampleText) {
-                                const exampleWords = exampleText.split(/(\s+)/); // Split by space, keeping spaces
+                                const exampleWords = exampleText.split(/(\s+)/); 
                                 exampleWords.forEach(wordPart => {
                                     if (wordPart.trim() !== '') {
                                         const wordSpan = document.createElement('span');
                                         wordSpan.textContent = wordPart;
                                         textContentDiv.appendChild(wordSpan);
-                                        exampleSpansMeta.push({ element: wordSpan, start: exampleAccCC, length: wordPart.length });
+                                        // exampleSpansMeta (sẽ được tạo lại khi click nút Play)
                                     } else {
-                                        textContentDiv.appendChild(document.createTextNode(wordPart)); // Add space node
+                                        textContentDiv.appendChild(document.createTextNode(wordPart)); 
                                     }
                                     exampleAccCC += wordPart.length;
                                 });
                             } else {
-                                textContentDiv.appendChild(document.createTextNode(exampleText)); // If empty, just add
+                                textContentDiv.appendChild(document.createTextNode(exampleText)); 
                             }
                             eP.appendChild(textContentDiv);
-                            // --- END: Karaoke highlight for example sentence ---
-
-
-                            const controlsDiv = document.createElement('div'); // Container for buttons
-                            controlsDiv.className = 'flex items-center ml-2'; // flex, items-center, margin-left
+                            
+                            const controlsDiv = document.createElement('div'); 
+                            controlsDiv.className = 'flex items-center ml-2 flex-shrink-0'; // Thêm flex-shrink-0
 
                             if (ex.eng && ex.eng.trim()) {
                                 const playSingleExBtn = document.createElement('button');
@@ -1665,23 +1666,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 playSingleExBtn.innerHTML = '<i class="fas fa-play"></i>';
                                 playSingleExBtn.title = 'Phát âm ví dụ này';
                                 playSingleExBtn.dataset.textToSpeak = ex.eng.trim();
+                                
                                 playSingleExBtn.addEventListener('click', (e) => {
                                     e.stopPropagation();
                                     const text = e.currentTarget.dataset.textToSpeak;
-                                    // Retrieve the correct spansMeta for this specific example
-                                    const clickedExampleElement = e.currentTarget.closest('.example-eng-on-card').querySelector('.text-content');
+                                    const clickedExampleTextContentDiv = e.currentTarget.closest('.example-eng-on-card').querySelector('.text-content');
                                     const localExampleSpansMeta = [];
                                     let localAccCC = 0;
-                                    if (clickedExampleElement && text) {
-                                        const words = text.split(/(\s+)/);
-                                        const childSpans = Array.from(clickedExampleElement.querySelectorAll('span:not(.example-label)'));
-                                        let spanIndex = 0;
-                                        words.forEach(wp => {
-                                            if(wp.trim() !== '' && childSpans[spanIndex]) {
-                                                localExampleSpansMeta.push({element: childSpans[spanIndex], start: localAccCC, length: wp.length});
-                                                spanIndex++;
+
+                                    if (clickedExampleTextContentDiv && text) {
+                                        const childNodes = Array.from(clickedExampleTextContentDiv.childNodes);
+                                        childNodes.forEach(node => {
+                                            if (node.nodeType === Node.TEXT_NODE) { // Xử lý cả text node (khoảng trắng)
+                                                localAccCC += node.textContent.length;
+                                            } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'SPAN' && !node.classList.contains('example-label')) {
+                                                localExampleSpansMeta.push({element: node, start: localAccCC, length: node.textContent.length});
+                                                localAccCC += node.textContent.length;
                                             }
-                                            localAccCC += wp.length;
                                         });
                                     }
                                     if (text) {
@@ -1708,7 +1709,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 });
                             };
                             controlsDiv.appendChild(copyBtn);
-                            eP.appendChild(controlsDiv); // Add controls (play, copy) to the example paragraph
+                            eP.appendChild(controlsDiv); 
                             exD.appendChild(eP);
 
 
@@ -2548,25 +2549,81 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast("Đã thoát chế độ luyện tập thẻ.", 2000);
     }
 
+    // --- START: Swipe Handler Functions ---
+    function handleTouchStart(event) {
+        if (flashcardElement.classList.contains('flipped') || practiceType !== "off" || window.currentData.length === 0) {
+            return;
+        }
+        touchStartX = event.touches[0].clientX;
+        touchStartY = event.touches[0].clientY;
+        touchEndX = touchStartX; // Khởi tạo touchEndX để tránh lỗi nếu không có touchmove
+        touchEndY = touchStartY; // Khởi tạo touchEndY
+    }
+
+    function handleTouchMove(event) {
+        if (flashcardElement.classList.contains('flipped') || practiceType !== "off" || window.currentData.length === 0) {
+            return;
+        }
+        touchEndX = event.touches[0].clientX;
+        touchEndY = event.touches[0].clientY;
+    }
+
+    function handleTouchEnd(event) {
+        if (flashcardElement.classList.contains('flipped') || practiceType !== "off" || window.currentData.length === 0) {
+            return;
+        }
+
+        const horizontalDiff = touchEndX - touchStartX;
+        const verticalDiff = touchEndY - touchStartY;
+
+        // Chỉ xử lý nếu đây là một cú vuốt ngang rõ rệt
+        if (Math.abs(horizontalDiff) > Math.abs(verticalDiff) && Math.abs(horizontalDiff) > swipeThreshold) {
+            event.preventDefault(); // Ngăn các hành vi mặc định NẾU nó là một cú vuốt ngang hợp lệ
+            if (horizontalDiff > 0) { // Vuốt sang phải (Previous card)
+                if (prevBtn && !prevBtn.disabled) {
+                    prevBtn.click();
+                }
+            } else { // Vuốt sang trái (Next card)
+                if (nextBtn && !nextBtn.disabled) {
+                    nextBtn.click();
+                }
+            }
+        }
+        // Reset touch coordinates
+        touchStartX = 0;
+        touchEndX = 0;
+        touchStartY = 0;
+        touchEndY = 0;
+    }
+    // --- END: Swipe Handler Functions ---
+
 
     function setupEventListeners() {
         if(hamburgerMenuBtn) hamburgerMenuBtn.addEventListener('click', openSidebar);
         if(closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
         if(sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
 
+        // --- START: Gắn event listener cho vuốt thẻ ---
+        if (cardFrontElement) { // cardFrontElement đã được gán ở DOMContentLoaded
+            cardFrontElement.addEventListener('touchstart', handleTouchStart, { passive: true }); // passive: true cho phép scroll nếu không preventDefault
+            cardFrontElement.addEventListener('touchmove', handleTouchMove, { passive: true });
+            cardFrontElement.addEventListener('touchend', handleTouchEnd, false); // false để có thể gọi preventDefault bên trong nếu cần
+        }
+        // --- END: Gắn event listener cho vuốt thẻ ---
+
         if(cardSourceSelect) cardSourceSelect.addEventListener('change', async (e)=>{
             currentDatasetSource=e.target.value;
             const userId = getCurrentUserId();
             if (currentDatasetSource === 'user' && !userId) {
                 openAuthModalFromAuth('login');
-                window.currentData = []; // Xóa dữ liệu thẻ
-                window.updateFlashcard(); // Cập nhật UI
-                window.updateSidebarFilterVisibility(); // Cập nhật sidebar
+                window.currentData = []; 
+                window.updateFlashcard(); 
+                window.updateSidebarFilterVisibility(); 
                 return;
             }
-            if(practiceTypeSelect) practiceTypeSelect.value="off"; // Reset chế độ luyện tập
+            if(practiceTypeSelect) practiceTypeSelect.value="off"; 
             practiceType="off";
-            if(currentDatasetSource!=='user' && userDeckSelect)userDeckSelect.value='all_user_cards'; // Reset deck select
+            if(currentDatasetSource!=='user' && userDeckSelect)userDeckSelect.value='all_user_cards'; 
             await loadVocabularyData(categorySelect.value);
             window.updateSidebarFilterVisibility();
             window.updateMainHeaderTitle();
@@ -2574,13 +2631,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if(userDeckSelect) userDeckSelect.addEventListener('change', async ()=>{
             const userId = getCurrentUserId();
-            if(!userId) return; // Chỉ cho người dùng đã đăng nhập
+            if(!userId) return; 
             const stateForCurrentCategory = getCategoryState(currentDatasetSource, categorySelect.value);
             stateForCurrentCategory.deckId = userDeckSelect.value;
             appState.lastSelectedDeckId = userDeckSelect.value;
             saveAppState();
-            activeMasterList = await loadUserCards(userDeckSelect.value); // Tải thẻ cho deck mới
-            applyAllFilters(false); // Áp dụng lại bộ lọc, không phải từ load ban đầu
+            activeMasterList = await loadUserCards(userDeckSelect.value); 
+            applyAllFilters(false); 
         });
 
         if(manageDecksBtn) manageDecksBtn.addEventListener('click', async ()=>{
@@ -2590,7 +2647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openAuthModalFromAuth('login');
                 return;
             }
-            await loadUserDecks(); // Luôn tải lại danh sách decks mới nhất
+            await loadUserDecks(); 
             renderExistingDecksList();
             manageDecksModal.classList.remove('hidden','opacity-0');
             if (deckModalContent) deckModalContent.classList.remove('scale-95');
@@ -2620,21 +2677,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const createdDeck = await createDeck(deckName); // createDeck đã bao gồm loadUserDecks và render
+            const createdDeck = await createDeck(deckName); 
 
             if(createdDeck){
-                newDeckNameInput.value = ''; // Xóa input sau khi tạo thành công
-
-                // Nếu đang ở tab "Thẻ của tôi", tự động chọn bộ thẻ vừa tạo
+                newDeckNameInput.value = ''; 
                 if(currentDatasetSource === 'user'){
                     appState.lastSelectedDeckId = createdDeck.id;
                     const stateForCurrentCategory = getCategoryState(currentDatasetSource, categorySelect.value);
                     stateForCurrentCategory.deckId = createdDeck.id;
                     saveAppState();
-                    userDeckSelect.value = createdDeck.id; // Chọn deck mới trên UI
-                    activeMasterList = await loadUserCards(createdDeck.id); // Tải thẻ cho deck mới
-                    applyAllFilters(false); // Áp dụng lại bộ lọc
-                    updateMainHeaderTitle(); // Cập nhật tiêu đề
+                    userDeckSelect.value = createdDeck.id; 
+                    activeMasterList = await loadUserCards(createdDeck.id); 
+                    applyAllFilters(false); 
+                    updateMainHeaderTitle(); 
                 }
             }
         });
@@ -2706,7 +2761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         if(actionBtnMedia) actionBtnMedia.addEventListener('click', () => {
             const currentCard = window.currentData[window.currentIndex];
-            if (currentCard) openBottomSheet(currentCard, 'media', 'youglish'); // Mặc định mở tab Youglish
+            if (currentCard) openBottomSheet(currentCard, 'media', 'youglish'); 
         });
         if(actionBtnPracticeCard) actionBtnPracticeCard.addEventListener('click', () => {
             const currentCard = window.currentData[window.currentIndex];
@@ -2728,9 +2783,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(categorySelect) categorySelect.addEventListener('change', async (e)=>{
             clearLearningTimer();
             const selCat=e.target.value;
-            if(practiceTypeSelect)practiceTypeSelect.value="off"; // Reset chế độ luyện tập khi đổi category
+            if(practiceTypeSelect)practiceTypeSelect.value="off"; 
             practiceType="off";
-            searchInput.value=''; // Reset search
+            searchInput.value=''; 
             await loadVocabularyData(selCat);
             window.updateMainHeaderTitle();
         });
@@ -2766,10 +2821,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
         if(nextBtn) nextBtn.addEventListener('click', ()=>{
-            window.speechSynthesis.cancel(); // Hủy bỏ mọi phát âm khi chuyển thẻ
+            window.speechSynthesis.cancel(); 
             if(nextBtn.disabled)return;clearLearningTimer();if(window.currentIndex<window.currentData.length-1){window.currentIndex++;getCategoryState(currentDatasetSource,categorySelect.value).currentIndex=window.currentIndex;saveAppState();window.updateFlashcard();}else if(practiceType!=="off"&&currentAnswerChecked&&window.currentIndex>=window.currentData.length-1)applyAllFilters();});
         if(prevBtn) prevBtn.addEventListener('click', ()=>{
-            window.speechSynthesis.cancel(); // Hủy bỏ mọi phát âm khi chuyển thẻ
+            window.speechSynthesis.cancel(); 
             clearLearningTimer();if(window.currentIndex>0){window.currentIndex--;getCategoryState(currentDatasetSource,categorySelect.value).currentIndex=window.currentIndex;saveAppState();window.updateFlashcard();}});
         if(speakerBtn) speakerBtn.addEventListener('click', (e)=>{
             e.stopPropagation();
