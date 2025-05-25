@@ -1611,7 +1611,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         examplesListDiv.className = "space-y-1.5";
                         examplesListDiv.dataset.meaningId = mObj.id;
 
-                        const maxVisibleExamples = 1;
+                        const maxVisibleExamples = 2;
                         const totalExamples = mObj.examples.length;
 
                         mObj.examples.forEach((ex, exIdx) => {
