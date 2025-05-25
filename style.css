@@ -233,7 +233,7 @@ body {
 .additional-action-btn:hover {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-#action-btn-media { 
+#action-btn-media { /* ID của nút "Nghe/Xem" (trước là action-btn-youglish) */
     background-color: #ecfdf5; 
     color: #059669; 
     border: 1px solid #a7f3d0; 
@@ -284,16 +284,14 @@ body {
     color: #e5e7eb; 
 }
 
-/* *** KHÔI PHỤC CSS CHO BOTTOM SHEET VIDEO/MEDIA/NOTES MODE *** */
-#bottom-sheet.bottom-sheet-video-mode,
+/* CSS cho các chế độ đặc biệt của Bottom Sheet */
 #bottom-sheet.bottom-sheet-notes-mode,
 #bottom-sheet.bottom-sheet-media-mode { 
-    height: 75vh; /* Chiều cao khoảng 75% viewport height */
+    height: 75vh; /* Khôi phục chiều cao vừa phải */
     max-height: 75vh; 
     padding: 0.5rem; 
 }
 
-#bottom-sheet.bottom-sheet-video-mode #bottom-sheet-title,
 #bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-title,
 #bottom-sheet.bottom-sheet-media-mode #bottom-sheet-title {
     margin-bottom: 0.5rem; 
@@ -301,19 +299,18 @@ body {
     flex-shrink: 0; 
 }
 
-#bottom-sheet.bottom-sheet-video-mode #bottom-sheet-content,
 #bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-content,
 #bottom-sheet.bottom-sheet-media-mode #bottom-sheet-content {
     flex-grow: 1; 
     display: flex; 
     flex-direction: column; 
-    padding: 0; 
+    padding: 0; /* Bỏ padding ở đây để tab content tự quản lý */
     overflow: hidden; 
 }
 
 /* CSS cho Tabs trong Bottom Sheet */
 #bottom-sheet-tabs {
-    display: flex; 
+    display: flex; /* Sẽ được JS bật lên khi cần */
     border-bottom: 1px solid #e5e7eb; 
     margin-bottom: 0.75rem; 
 }
@@ -370,7 +367,7 @@ body {
     display: flex; 
     align-items: center;
     justify-content: center;
-    flex-grow: 1; 
+    flex-grow: 1; /* Cho phép co giãn nếu cần, nhưng aspect-ratio sẽ ưu tiên */
     overflow: hidden; 
     position: relative; 
 }
@@ -393,9 +390,8 @@ body {
 #bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-notes-textarea {
     flex-grow: 1; 
     min-height: 150px; 
-    max-height: calc(100% - 4rem); 
+    max-height: calc(100% - 4rem); /* Trừ đi khoảng trống cho nút Lưu */
 }
-/* *** KẾT THÚC CẬP NHẬT CSS *** */
 
 #notes-display {
     white-space: pre-wrap; 
