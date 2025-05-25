@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="style.css">
     <script>
       tailwind.config = {
-        darkMode: 'class', // or 'media'
         theme: {
           extend: {
             fontFamily: {
@@ -20,259 +19,297 @@
       }
     </script>
 </head>
-<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 flex flex-col min-h-screen">
+<body class="bg-slate-100 text-slate-800 flex flex-col min-h-screen">
 
-    <header class="bg-slate-800 dark:bg-slate-950 text-white p-4 shadow-md sticky top-0 z-50">
+    <header class="bg-slate-800 text-white p-4 shadow-md sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
-            <button id="hamburger-menu-btn" title="Mở bộ lọc" class="text-2xl p-2 hover:bg-slate-700 dark:hover:bg-slate-800 rounded-md">
+            <button id="hamburger-menu-btn" title="Mở bộ lọc" class="text-2xl p-2 hover:bg-slate-700 rounded-md">
                 <i class="fas fa-bars"></i>
             </button>
-            <h1 id="main-header-title" class="text-xl sm:text-2xl font-semibold text-center flex-grow px-2">Flashcard</h1>
-            <div id="auth-container" class="flex items-center space-x-2 sm:space-x-3 ml-2 sm:ml-4">
-                <span id="user-email-display" class="text-xs sm:text-sm hidden truncate max-w-[100px] sm:max-w-[150px]" title=""></span>
-                <button id="auth-action-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-3 sm:px-4 rounded-md text-xs sm:text-sm flex items-center">
-                    </button>
+            <h1 id="main-header-title" class="text-lg sm:text-xl md:text-2xl font-semibold text-center flex-grow px-2 truncate"></h1>
+            <div id="auth-container" class="flex items-center space-x-2 sm:space-x-3">
+                <span id="user-email-display" class="text-xs sm:text-sm hidden sm:inline-block truncate max-w-[100px] sm:max-w-[150px]"></span>
+                <button id="auth-action-btn" 
+                        class="text-white font-semibold py-2 px-3 sm:px-4 rounded-md text-sm flex items-center justify-center transition-colors duration-150 ease-in-out">
+                </button>
             </div>
         </div>
     </header>
 
-    <aside id="filter-sidebar" class="fixed top-0 left-0 w-72 h-full bg-white dark:bg-slate-800 shadow-xl p-5 transform -translate-x-full z-[1001] overflow-y-auto">
+    <aside id="filter-sidebar" class="fixed top-0 left-0 w-72 h-full bg-white shadow-xl p-5 transform -translate-x-full z-[1001] overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-semibold text-slate-700 dark:text-slate-200">Tùy chọn</h2>
-            <button id="close-sidebar-btn" title="Đóng bộ lọc" class="text-2xl text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+            <h2 class="text-2xl font-semibold text-slate-700">Tùy chọn</h2>
+            <button id="close-sidebar-btn" title="Đóng bộ lọc" class="text-2xl text-slate-500 hover:text-slate-700">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <section class="controls space-y-5">
             <div>
-                <label for="card-source-select" class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Nguồn thẻ:</label>
-                <select id="card-source-select" class="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400">
+                <label for="card-source-select" class="block text-sm font-medium text-slate-600 mb-1">Nguồn thẻ:</label>
+                <select id="card-source-select" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="web">Thẻ của Web</option>
                     <option value="user">Thẻ của Tôi</option>
                 </select>
             </div>
             <div id="user-deck-filter-container" class="control-group user-deck-filter" style="display:none;">
-                <label for="user-deck-select" class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Chọn bộ thẻ (Deck):</label>
-                <select id="user-deck-select" class="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" disabled></select>
+                <label for="user-deck-select" class="block text-sm font-medium text-slate-600 mb-1">Chọn bộ thẻ (Deck):</label>
+                <select id="user-deck-select" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" disabled></select>
             </div>
-            <button id="manage-decks-btn" class="mt-2 w-full bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out disabled:opacity-60" style="display:none;" disabled>
+            <button id="manage-decks-btn" class="mt-2 w-full bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out" style="display:none;" disabled>
                 <i class="fas fa-layer-group mr-2"></i>Quản lý Bộ thẻ
             </button>
             <div>
-                <button id="open-add-card-modal-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out mb-4 disabled:opacity-60" disabled>
+                <button id="open-add-card-modal-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out mb-4" disabled>
                     <i class="fas fa-plus mr-2"></i>Thêm thẻ mới
                 </button>
             </div>
             <div class="control-group category-selection">
-                <label for="category" class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Chọn loại từ:</label>
-                <select id="category" class="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="phrasalVerbs">Cụm động từ (Phrasal Verbs)</option>
+                <label for="category" class="block text-sm font-medium text-slate-600 mb-1">Chọn loại từ:</label>
+                <select id="category" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="verbs">Động từ</option>
+                    <option value="adjectives">Tính từ</option>
+                    <option value="nouns">Danh từ</option>
+                    <option value="phrasalVerbs">Cụm động từ</option>
                     <option value="collocations">Collocations</option>
-                    <option value="verbs">Động từ (Verbs)</option>
-                    <option value="adjectives">Tính từ (Adjectives)</option>
-                    <option value="nouns">Danh từ (Nouns)</option>
                 </select>
             </div>
-            <div id="base-verb-filter-container" style="display:none;"><label for="base-verb-filter" class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Lọc theo từ gốc:</label><select id="base-verb-filter" class="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm"></select></div>
-            <div id="tag-filter-container" style="display:none;"><label for="tags" class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Lọc theo chủ đề:</label><select id="tags" class="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm"></select></div>
-            <div><label for="practice-type-select" class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Chế độ Luyện tập:</label><select id="practice-type-select" class="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm"><option value="off">Tắt</option><option value="meaning_quiz">Chọn Nghĩa</option><option value="word_quiz">Chọn Từ</option><option value="typing_practice">Gõ Từ</option></select></div>
-            <div><label for="filter-card-status" class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Hiển thị thẻ:</label><select id="filter-card-status" class="w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm"><option value="all_study">Mới & Đang học</option><option value="review_today">Cần ôn hôm nay</option><option value="all_visible">Tất cả (kể cả tạm ngưng)</option><option value="new">Chỉ Mới</option><option value="learning">Chỉ Đang học</option><option value="learned">Chỉ Đã thuộc</option></select></div>
+            <div id="base-verb-filter-container" style="display:none;"><label for="base-verb-filter" class="block text-sm font-medium text-slate-600 mb-1">Lọc theo từ gốc:</label><select id="base-verb-filter" class="w-full p-2 border border-slate-300 rounded-md shadow-sm"></select></div>
+            <div id="tag-filter-container" style="display:none;"><label for="tags" class="block text-sm font-medium text-slate-600 mb-1">Lọc theo chủ đề:</label><select id="tags" class="w-full p-2 border border-slate-300 rounded-md shadow-sm"></select></div>
+            <div><label for="practice-type-select" class="block text-sm font-medium text-slate-600 mb-1">Chế độ Luyện tập:</label><select id="practice-type-select" class="w-full p-2 border border-slate-300 rounded-md shadow-sm"><option value="off">Tắt</option><option value="meaning_quiz">Chọn Nghĩa</option><option value="word_quiz">Chọn Từ</option><option value="typing_practice">Gõ Từ</option></select></div>
+            <div>
+                <label for="filter-card-status" class="block text-sm font-medium text-slate-600 mb-1">Hiển thị thẻ:</label>
+                <select id="filter-card-status" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="all_study">Mới & Đang học</option>
+                    <option value="review_today">Cần ôn tập hôm nay</option>
+                    <option value="all_visible">Tất cả</option>
+                    <option value="new">Chỉ Mới</option>
+                    <option value="learning">Chỉ Đang học</option>
+                    <option value="learned">Chỉ Đã thuộc</option>
+                </select>
+            </div>
         </section>
     </aside>
     <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[1000] hidden"></div>
 
     <main class="container mx-auto p-4 sm:p-6 flex-grow w-full max-w-2xl flex flex-col items-center">
         <section class="search-filter-main-container w-full mb-4">
-            <div class="control-group bg-white dark:bg-slate-800 p-3 rounded-lg shadow">
+            <div class="control-group bg-white p-3 rounded-lg shadow">
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-search text-slate-400 dark:text-slate-500"></i></div>
-                    <input type="search" id="search-input" placeholder="Nhập từ tiếng Anh..." class="w-full p-3 pl-10 pr-8 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-search text-slate-400"></i></div>
+                    <input type="search" id="search-input" placeholder="Nhập từ tiếng Anh..." class="w-full p-3 pl-10 pr-8 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
             </div>
         </section>
         <section id="practice-area" class="w-full mb-4" style="display:none;">
-            <div id="typing-input-container" class="w-full mb-2" style="display:none;">
-                <input type="text" id="typing-input" placeholder="Gõ câu trả lời..." class="w-full p-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md">
-                <button id="submit-typing-answer-btn" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-md">Kiểm tra</button>
-            </div>
+            <div id="typing-input-container" class="w-full mb-2" style="display:none;"><input type="text" id="typing-input" placeholder="Gõ câu trả lời..." class="w-full p-3 border rounded-md"><button id="submit-typing-answer-btn" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-md">Kiểm tra</button></div>
             <div id="multiple-choice-options" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full"></div>
             <div id="feedback-message" class="mt-3 p-3 rounded-md w-full text-center font-semibold hidden"></div>
         </section>
         
         <section class="flashcard-container w-full h-[380px] sm:h-[400px] mb-4">
             <div id="flashcard" class="flashcard relative w-full h-full">
-                <div class="card-front absolute w-full h-full bg-gradient-to-br from-green-500 to-emerald-600 dark:from-green-600 dark:to-emerald-700 text-white rounded-xl shadow-xl p-5 flex flex-col items-center justify-center overflow-hidden">
-                    <button id="card-options-menu-btn" title="Tùy chọn thẻ" class="absolute top-2 right-2 text-xl p-2 text-white hover:text-green-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20" style="display: none;">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
+                <div class="card-front absolute w-full h-full bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl shadow-xl p-5 flex flex-col items-center justify-center overflow-hidden">
                     <div class="card-scrollable-content w-full h-full overflow-y-auto flex flex-col items-center justify-center text-center p-2 pb-16">
-                        <div id="word-display" class="text-3xl sm:text-4xl font-bold break-words"></div>
+                        <div id="word-display" class="text-3xl sm:text-4xl font-bold break-words">
+                            </div>
                         <p id="pronunciation-display" class="text-lg sm:text-xl mt-2 bg-black bg-opacity-20 px-3 py-1 rounded-md"></p>
                         <div id="tags-display-front" class="text-sm mt-3 italic"></div>
                     </div>
                     <button id="speaker-btn" title="Phát âm Từ" class="absolute bottom-4 left-4 text-2xl p-2 hover:text-green-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20"><i class="fas fa-volume-up"></i></button>
-                    <div class="absolute bottom-4 right-4 flex space-x-2">
-                        <button id="action-btn-notes" title="Ghi chú" class="additional-action-btn bg-yellow-100 dark:bg-yellow-700 text-yellow-700 dark:text-yellow-200 border-yellow-300 dark:border-yellow-600 hover:bg-yellow-200 dark:hover:bg-yellow-600">
-                            <i class="fas fa-sticky-note"></i> Ghi chú
-                        </button>
-                        <button id="action-btn-media" title="Nghe/Xem" class="additional-action-btn bg-sky-100 dark:bg-sky-700 text-sky-700 dark:text-sky-200 border-sky-300 dark:border-sky-600 hover:bg-sky-200 dark:hover:bg-sky-600">
-                            <i class="fas fa-play-circle"></i> Nghe/Xem
-                        </button>
-                        <button id="action-btn-practice-card" title="Luyện tập thẻ này" class="additional-action-btn bg-purple-100 dark:bg-purple-700 text-purple-700 dark:text-purple-200 border-purple-300 dark:border-purple-600 hover:bg-purple-200 dark:hover:bg-purple-600">
-                            <i class="fas fa-dumbbell"></i> Luyện tập
-                        </button>
-                    </div>
-                </div>
-                <div class="card-back absolute w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 text-white rounded-xl shadow-xl p-5 flex flex-col overflow-hidden">
-                    <button id="card-options-menu-btn-back" title="Tùy chọn thẻ" class="absolute top-2 right-2 text-xl p-2 text-white hover:text-indigo-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20" style="display: none;">
+                    <button id="card-options-menu-btn" title="Tùy chọn thẻ" 
+                            class="card-action-btn-on-back absolute top-1.5 right-1.5 p-2 text-white hover:text-sky-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20 text-lg"
+                            style="display: none;"> 
                         <i class="fas fa-ellipsis-v"></i>
                     </button>
-                    <div class="card-scrollable-content w-full h-full overflow-y-auto text-left p-3 pb-16 space-y-2 pt-10">
-                        <div id="meaning-display-container" class="space-y-4"></div>
-                        <div id="notes-section" class="notes-section border-t border-blue-400 dark:border-blue-500 pt-3 mt-4" style="display:none;">
-                            <p id="notes-display" class="text-sm text-indigo-100 dark:text-indigo-200"></p>
+                </div>
+                <div class="card-back absolute w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-xl p-5 flex flex-col overflow-hidden">
+                    <button id="card-options-menu-btn-back" title="Tùy chọn thẻ" 
+                            class="card-action-btn-on-back absolute top-1.5 right-1.5 p-2 text-white hover:text-sky-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20 text-lg"
+                            style="display: none;"> 
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="card-scrollable-content w-full h-full overflow-y-auto text-left p-3 pb-16 space-y-2"> 
+                        <div id="meaning-display-container" class="space-y-4">
+                            </div>
+                        <div id="notes-section" class="notes-section border-t border-blue-400 pt-3 mt-4">
+                            <p id="notes-display" class="text-sm text-indigo-100"></p>
                         </div>
                     </div>
                     <button id="speaker-example-btn" title="Phát âm Ví dụ" class="absolute bottom-4 right-4 text-2xl p-2 hover:text-indigo-200 transition-colors rounded-full hover:bg-black hover:bg-opacity-20"><i class="fas fa-volume-up"></i></button>
-                </div>
+                    </div>
             </div>
         </section>
-        <section class="srs-controls grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full max-w-md mb-2">
-            <button id="btn-srs-again" class="srs-btn py-2 px-3 sm:py-3 sm:px-4 bg-red-100 hover:bg-red-200 dark:bg-red-700 dark:hover:bg-red-600 text-red-700 dark:text-red-100 font-semibold rounded-md shadow-sm border border-red-300 dark:border-red-500 transition duration-150 ease-in-out disabled:opacity-50">Lại (10m)</button>
-            <button id="btn-srs-hard" class="srs-btn py-2 px-3 sm:py-3 sm:px-4 bg-amber-100 hover:bg-amber-200 dark:bg-amber-700 dark:hover:bg-amber-600 text-amber-700 dark:text-amber-100 font-semibold rounded-md shadow-sm border border-amber-300 dark:border-amber-500 transition duration-150 ease-in-out disabled:opacity-50">Khó (&lt;1d)</button>
-            <button id="btn-srs-good" class="srs-btn py-2 px-3 sm:py-3 sm:px-4 bg-green-100 hover:bg-green-200 dark:bg-green-700 dark:hover:bg-green-600 text-green-700 dark:text-green-100 font-semibold rounded-md shadow-sm border border-green-300 dark:border-green-500 transition duration-150 ease-in-out disabled:opacity-50">Tốt (&lt;2d)</button>
-            <button id="btn-srs-easy" class="srs-btn py-2 px-3 sm:py-3 sm:px-4 bg-sky-100 hover:bg-sky-200 dark:bg-sky-700 dark:hover:bg-sky-600 text-sky-700 dark:text-sky-100 font-semibold rounded-md shadow-sm border border-sky-300 dark:border-sky-500 transition duration-150 ease-in-out disabled:opacity-50">Dễ (&lt;4d)</button>
+        <section class="status-controls grid grid-cols-4 gap-2 sm:gap-3 w-full max-w-md mb-2">
+            <button id="btn-srs-again" class="srs-btn py-2 px-2 sm:py-3 sm:px-4 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-md shadow-sm border border-red-700 transition duration-150 ease-in-out text-xs sm:text-sm">Lặp lại</button>
+            <button id="btn-srs-hard" class="srs-btn py-2 px-2 sm:py-3 sm:px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-md shadow-sm border border-orange-700 transition duration-150 ease-in-out text-xs sm:text-sm">Khó</button>
+            <button id="btn-srs-good" class="srs-btn py-2 px-2 sm:py-3 sm:px-4 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-md shadow-sm border border-yellow-700 transition duration-150 ease-in-out text-xs sm:text-sm">Tốt</button>
+            <button id="btn-srs-easy" class="srs-btn py-2 px-2 sm:py-3 sm:px-4 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-md shadow-sm border border-green-700 transition duration-150 ease-in-out text-xs sm:text-sm">Dễ</button>
         </section>
+
+        <section class="additional-card-actions grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-md mb-4">
+            <button id="action-btn-notes" class="additional-action-btn bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-slate-200">
+                <i class="fas fa-sticky-note mr-1 sm:mr-2"></i>
+                <span class="text-xs sm:text-sm">Ghi chú</span>
+            </button>
+            <button id="action-btn-media" class="additional-action-btn bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-slate-200">
+                <i class="fas fa-headphones-alt mr-1 sm:mr-2"></i>
+                <span class="text-xs sm:text-sm">Nghe/Xem</span>
+            </button>
+            <button id="action-btn-practice-card" class="additional-action-btn bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-slate-200">
+                <i class="fas fa-dumbbell mr-1 sm:mr-2"></i>
+                <span class="text-xs sm:text-sm">Luyện tập</span>
+            </button>
+        </section>
+
         <section class="navigation flex justify-between items-center w-full max-w-md mb-4">
-            <button id="prev-btn" class="py-3 px-6 bg-slate-600 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-arrow-left mr-1"></i> Trước</button>
-            <button id="flip-btn" class="py-3 px-6 bg-sky-500 hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-500 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-sync-alt mr-1"></i> Lật</button>
-            <button id="next-btn" class="py-3 px-6 bg-slate-600 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">Tiếp <i class="fas fa-arrow-right ml-1"></i></button>
+            <button id="prev-btn" class="py-3 px-6 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-arrow-left mr-1"></i> Trước</button>
+            <button id="exit-single-card-practice-btn" class="py-3 px-6 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out" style="display: none;">
+                <i class="fas fa-times-circle mr-1"></i> Thoát Luyện
+            </button>
+            <button id="flip-btn" class="py-3 px-6 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-sync-alt mr-1"></i> Lật</button>
+            <button id="next-btn" class="py-3 px-6 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">Tiếp <i class="fas fa-arrow-right ml-1"></i></button>
         </section>
-        <button id="exit-single-card-practice-btn" class="hidden my-2 py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out">
-            <i class="fas fa-times-circle mr-2"></i>Thoát Luyện tập Thẻ này
-        </button>
         <section class="card-info text-center text-sm mb-6"><p>Thẻ <span id="current-card-index">0</span> / <span id="total-cards">0</span></p></section>
     </main>
-    <footer class="bg-slate-800 dark:bg-slate-950 text-white p-4 text-center mt-auto"><p>&copy; 2025 Flashcard App</p></footer>
+    <footer class="bg-slate-800 text-white p-4 text-center mt-auto"><p>&copy; 2025 Flashcard App</p></footer>
 
     <div id="add-edit-card-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[1002] hidden opacity-0">
-        <div class="modal-content bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-xl w-11/12 max-w-2xl mx-auto transform scale-95 max-h-[90vh] flex flex-col">
+        <div class="modal-content bg-white p-6 sm:p-8 rounded-lg shadow-xl w-11/12 max-w-2xl mx-auto transform scale-95 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
-                <h2 id="modal-title" class="text-2xl font-semibold text-slate-700 dark:text-slate-200">Thêm thẻ mới</h2>
-                <button id="close-modal-btn" class="text-2xl text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">&times;</button>
+                <h2 id="modal-title" class="text-2xl font-semibold text-slate-700">Thêm thẻ mới</h2>
+                <button id="close-modal-btn" class="text-2xl text-slate-500 hover:text-slate-700">&times;</button>
             </div>
-            <div class="mb-4 flex space-x-2">
-                <button id="manual-input-mode-btn" class="input-mode-toggle-btn active">Nhập thủ công</button>
+
+            <div class="mb-4 flex justify-center space-x-2">
+                <button id="manual-input-mode-btn" class="input-mode-toggle-btn active">Nhập Thủ Công</button>
                 <button id="json-input-mode-btn" class="input-mode-toggle-btn">Nhập từ JSON</button>
             </div>
+
             <form id="add-edit-card-form" class="space-y-4 overflow-y-auto pr-2 flex-grow">
                 <input type="hidden" id="card-id-input">
                 <div id="modal-deck-assignment-container" style="display: none;">
-                    <label for="card-deck-assignment-select" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Gán vào bộ thẻ:</label>
-                    <select id="card-deck-assignment-select" class="mt-1 block w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></select>
-                    <p id="deck-creation-hint" class="text-xs text-slate-500 dark:text-slate-400 mt-1 hidden"></p>
+                    <label for="card-deck-assignment-select" class="block text-sm font-medium text-slate-600">Gán vào bộ thẻ:</label>
+                    <select id="card-deck-assignment-select" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></select>
+                    <p id="deck-creation-hint" class="text-xs text-slate-500 mt-1 hidden"></p>
                 </div>
                 <div>
-                    <label for="card-word-input" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Từ/Cụm từ (Tiếng Anh) <span class="text-red-500">*</span></label>
+                    <label for="card-word-input" class="block text-sm font-medium text-slate-600">Từ/Cụm từ (Tiếng Anh) <span class="text-red-500">*</span></label>
                     <div class="relative">
-                        <input type="text" id="card-word-input" required class="mt-1 block w-full p-2 pr-8 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <input type="text" id="card-word-input" required class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     </div>
                     <p id="card-word-error" class="form-error-message hidden"></p>
                 </div>
                 <div>
-                    <label for="card-pronunciation-input" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Phát âm</label>
+                    <label for="card-pronunciation-input" class="block text-sm font-medium text-slate-600">Phát âm</label>
                     <div class="relative">
-                        <input type="text" id="card-pronunciation-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <input type="text" id="card-pronunciation-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     </div>
                 </div>
-                <div class="border-t dark:border-slate-700 pt-4 mt-4">
+                <div>
+                    <label for="card-video-url-input" class="block text-sm font-medium text-slate-600">Link Video YouTube cụ thể (tùy chọn)</label>
+                    <div class="relative">
+                        <input type="url" id="card-video-url-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Dán link YouTube cho video học liệu...">
+                    </div>
+                </div>
+                <div class="border-t pt-4 mt-4">
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-lg font-medium text-slate-700 dark:text-slate-200">Các khối nghĩa & ví dụ:</h3>
+                        <h3 class="text-lg font-medium text-slate-700">Các khối nghĩa & ví dụ:</h3>
                         <p id="meaning-blocks-general-error" class="form-error-message hidden text-right"></p>
                     </div>
-                    <div id="meaning-blocks-container" class="space-y-0"></div>
+                    <div id="meaning-blocks-container" class="space-y-0">
+                        </div>
                     <button type="button" id="add-another-meaning-block-at-end-btn" class="mt-4 text-sm bg-green-500 hover:bg-green-600 text-white font-semibold py-1.5 px-3 rounded-md shadow-sm w-full">
                         <i class="fas fa-plus mr-1"></i>Thêm Khối Nghĩa Khác (ở cuối)
                     </button>
                 </div>
-                <div class="border-t dark:border-slate-700 pt-4 mt-4">
-                    <label for="card-general-notes-input" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Ghi chú chung cho thẻ (tùy chọn)</label>
+                <div class="border-t pt-4 mt-4">
+                    <label for="card-general-notes-input" class="block text-sm font-medium text-slate-600">Ghi chú chung cho thẻ (tùy chọn)</label>
                     <div class="relative">
-                        <textarea id="card-general-notes-input" rows="2" class="mt-1 block w-full p-2 pr-8 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                        <textarea id="card-general-notes-input" rows="2" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                     </div>
                 </div>
-                 <div>
-                    <label for="card-video-url-input" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Link Video YouTube (tùy chọn)</label>
+                <div id="phrasal-verb-specific-fields" style="display: none;" class="border-t pt-4 mt-4">
                     <div class="relative">
-                        <input type="url" id="card-video-url-input" placeholder="https://www.youtube.com/watch?v=..." class="mt-1 block w-full p-2 pr-8 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
-                </div>
-                <div id="phrasal-verb-specific-fields" style="display: none;" class="border-t dark:border-slate-700 pt-4 mt-4">
-                    <div class="relative">
-                        <label for="card-base-verb-input" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Động từ gốc:</label>
-                        <input type="text" id="card-base-verb-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
+                        <label for="card-base-verb-input" class="block text-sm font-medium text-slate-600">Động từ gốc:</label>
+                        <input type="text" id="card-base-verb-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
                     <div class="mt-4 relative">
-                        <label for="card-tags-input" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Chủ đề (cách nhau bằng dấu phẩy):</label>
-                        <input type="text" id="card-tags-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
+                        <label for="card-tags-input" class="block text-sm font-medium text-slate-600">Chủ đề (cách nhau bằng dấu phẩy):</label>
+                        <input type="text" id="card-tags-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
                 </div>
             </form>
-            <div id="json-input-area" style="display: none;" class="flex-grow flex flex-col space-y-3">
-                <div id="json-deck-assignment-container" style="display: none;">
-                    <label for="json-card-deck-assignment-select" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Gán thẻ JSON vào bộ thẻ:</label>
-                    <select id="json-card-deck-assignment-select" class="mt-1 block w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></select>
-                    <p id="json-deck-creation-hint" class="text-xs text-slate-500 dark:text-slate-400 mt-1 hidden"></p>
+
+            <div id="json-input-area" class="hidden space-y-4 overflow-y-auto pr-2 flex-grow">
+                <div>
+                    <label for="card-json-input" class="block text-sm font-medium text-slate-600">Dán mã JSON (một thẻ hoặc một mảng thẻ):</label>
+                    <textarea id="card-json-input" rows="10" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder='Ví dụ cho một thẻ:
+{
+  "category": "collocations",
+  "collocation": "make progress",
+  "baseVerb": "make",
+  "meanings": [
+    { "text": "Tiến bộ", "examples": [{ "eng": "He is making good progress." }] }
+  ],
+  "tags": ["development"]
+}
+Hoặc một mảng thẻ:
+[ {thẻ 1}, {thẻ 2} ]'></textarea>
+                    <p id="json-import-error-message" class="form-error-message hidden"></p>
+                    <p id="json-import-success-message" class="text-green-600 text-xs mt-1 hidden"></p>
                 </div>
-                <label for="card-json-input" class="block text-sm font-medium text-slate-700 dark:text-slate-200">Dán mã JSON của thẻ (hoặc mảng thẻ) vào đây:</label>
-                <textarea id="card-json-input" rows="10" class="block w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 flex-grow" placeholder='[{"word":"example", "category":"nouns", "meanings":[{"text":"ví dụ"}]}]'></textarea>
-                <p id="json-import-error-message" class="form-error-message hidden"></p>
-                <p id="json-import-success-message" class="text-sm text-green-600 dark:text-green-400 hidden"></p>
+                 <div id="json-deck-assignment-container"> 
+                    <label for="json-card-deck-assignment-select" class="block text-sm font-medium text-slate-600">Gán các thẻ này vào bộ thẻ:</label>
+                    <select id="json-card-deck-assignment-select" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></select>
+                     <p id="json-deck-creation-hint" class="text-xs text-slate-500 mt-1 hidden"></p>
+                </div>
             </div>
-            <div class="flex justify-end space-x-3 pt-4 mt-auto border-t dark:border-slate-700">
-                <button type="button" id="cancel-card-btn" class="py-2 px-4 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 rounded-md shadow-sm">Hủy</button>
+
+            <div class="flex justify-end space-x-3 pt-4 mt-auto border-t">
+                <button type="button" id="cancel-card-btn" class="py-2 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md shadow-sm">Hủy</button>
                 <button type="submit" form="add-edit-card-form" id="save-card-btn" class="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow-sm">Lưu thẻ</button>
-                <button type="button" id="process-json-btn" style="display: none;" class="py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-md shadow-sm">Xử lý JSON & Tạo Thẻ</button>
+                <button type="button" id="process-json-btn" class="py-2 px-4 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-md shadow-sm hidden">Xử lý JSON & Tạo Thẻ</button>
             </div>
         </div>
     </div>
 
     <div id="manage-decks-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 z-[1003] hidden opacity-0">
-        <div class="modal-content bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-xl w-11/12 max-w-md mx-auto transform scale-95">
+        <div class="modal-content bg-white p-6 sm:p-8 rounded-lg shadow-xl w-11/12 max-w-md mx-auto transform scale-95">
             <div class="flex justify-between items-center mb-4">
-                <h2 id="deck-modal-title" class="text-2xl font-semibold text-slate-700 dark:text-slate-200">Quản lý Bộ thẻ</h2>
-                <button id="close-deck-modal-btn" class="text-2xl text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">&times;</button>
+                <h2 id="deck-modal-title" class="text-2xl font-semibold text-slate-700">Quản lý Bộ thẻ</h2>
+                <button id="close-deck-modal-btn" class="text-2xl text-slate-500 hover:text-slate-700">&times;</button>
             </div>
             <div class="space-y-4">
                 <div>
-                    <label for="new-deck-name-input" class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Tên bộ thẻ mới:</label>
-                    <input type="text" id="new-deck-name-input" class="mt-1 block w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <label for="new-deck-name-input" class="block text-sm font-medium text-slate-600 mb-1">Tên bộ thẻ mới:</label>
+                    <input type="text" id="new-deck-name-input" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     <button id="add-new-deck-btn" class="mt-3 w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out">
                         <i class="fas fa-plus mr-2"></i>Thêm bộ thẻ
                     </button>
                 </div>
-                <hr class="my-4 dark:border-slate-700">
-                <h3 class="text-lg font-medium text-slate-700 dark:text-slate-200">Các bộ thẻ hiện có:</h3>
-                <div id="existing-decks-list" class="max-h-60 overflow-y-auto space-y-2"></div>
+                <hr class="my-4">
+                <h3 class="text-lg font-medium text-slate-700">Các bộ thẻ hiện có:</h3>
+                <div id="existing-decks-list" class="max-h-60 overflow-y-auto space-y-2">
+                    </div>
             </div>
         </div>
     </div>
 
     <div id="auth-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center z-[1004] hidden opacity-0">
-        <div id="auth-modal-content" class="bg-white dark:bg-slate-800 p-8 rounded-lg shadow-xl w-11/12 max-w-md mx-auto transform scale-95">
+        <div id="auth-modal-content" class="bg-white p-8 rounded-lg shadow-xl w-11/12 max-w-md mx-auto transform scale-95">
             <div class="flex justify-between items-center mb-6">
-                <h2 id="auth-modal-title" class="text-2xl font-semibold text-slate-700 dark:text-slate-200">Đăng nhập</h2>
-                <button id="close-auth-modal-btn" class="text-3xl text-slate-400 dark:text-slate-300 hover:text-slate-600 dark:hover:text-slate-100">&times;</button>
+                <h2 id="auth-modal-title" class="text-2xl font-semibold text-slate-700">Đăng nhập</h2>
+                <button id="close-auth-modal-btn" class="text-3xl text-slate-400 hover:text-slate-600">&times;</button>
             </div>
             
             <form id="login-form" class="space-y-4">
                 <div>
-                    <label for="login-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
-                    <input type="email" id="login-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label for="login-email" class="block text-sm font-medium text-slate-700">Email</label>
+                    <input type="email" id="login-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 </div>
                 <div>
-                    <label for="login-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Mật khẩu</label>
-                    <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label for="login-password" class="block text-sm font-medium text-slate-700">Mật khẩu</label>
+                    <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 </div>
                 <p id="login-error-message" class="auth-error-message text-xs text-red-500 hidden"></p>
                 <div>
@@ -284,16 +321,16 @@
 
             <form id="register-form" class="space-y-4 hidden">
                 <div>
-                    <label for="register-email" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
-                    <input type="email" id="register-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label for="register-email" class="block text-sm font-medium text-slate-700">Email</label>
+                    <input type="email" id="register-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 </div>
                 <div>
-                    <label for="register-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Mật khẩu (ít nhất 6 ký tự)</label>
-                    <input type="password" id="register-password" name="password" required minlength="6" class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label for="register-password" class="block text-sm font-medium text-slate-700">Mật khẩu (ít nhất 6 ký tự)</label>
+                    <input type="password" id="register-password" name="password" required minlength="6" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 </div>
                  <div>
-                    <label for="register-confirm-password" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Xác nhận Mật khẩu</label>
-                    <input type="password" id="register-confirm-password" name="confirm-password" required minlength="6" class="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <label for="register-confirm-password" class="block text-sm font-medium text-slate-700">Xác nhận Mật khẩu</label>
+                    <input type="password" id="register-confirm-password" name="confirm-password" required minlength="6" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                 </div>
                 <p id="register-error-message" class="auth-error-message text-xs text-red-500 hidden"></p>
                 <div>
@@ -304,60 +341,63 @@
             </form>
             
             <div class="mt-6 text-center">
-                <button id="toggle-auth-mode-btn" class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
+                <button id="toggle-auth-mode-btn" class="text-sm text-indigo-600 hover:text-indigo-500">
                     Chưa có tài khoản? Đăng ký ngay
                 </button>
             </div>
         </div>
     </div>
 
-    <div id="copy-to-deck-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 z-[1005] hidden opacity-0">
-        <div class="modal-content bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-xl w-11/12 max-w-md mx-auto transform scale-95">
+    <div id="copy-to-deck-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 z-[1005] hidden opacity-0 flex items-center justify-center">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-11/12 max-w-md mx-auto transform scale-95">
             <div class="flex justify-between items-center mb-4">
-                <h2 id="copy-to-deck-modal-title" class="text-xl font-semibold text-slate-700 dark:text-slate-200">Sao chép Thẻ Web vào Bộ của bạn</h2>
-                <button id="close-copy-to-deck-modal-btn" class="text-2xl text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">&times;</button>
+                <h2 id="copy-to-deck-modal-title" class="text-xl font-semibold text-slate-700">Sao chép Thẻ vào Bộ của Bạn</h2>
+                <button id="close-copy-to-deck-modal-btn" class="text-2xl text-slate-500 hover:text-slate-700">&times;</button>
             </div>
             <div class="space-y-4">
                 <div>
-                    <label for="copy-to-deck-select" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Chọn bộ thẻ đích:</label>
-                    <select id="copy-to-deck-select" class="mt-1 block w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <label for="copy-to-deck-select" class="block text-sm font-medium text-slate-600">Chọn bộ thẻ đích:</label>
+                    <select id="copy-to-deck-select" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         </select>
                 </div>
                 <div id="copy-new-deck-name-container" style="display: none;">
-                    <label for="copy-new-deck-name-input" class="block text-sm font-medium text-slate-600 dark:text-slate-300">Tên bộ thẻ mới:</label>
-                    <input type="text" id="copy-new-deck-name-input" class="mt-1 block w-full p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <label for="copy-new-deck-name-input" class="block text-sm font-medium text-slate-600">Tên bộ thẻ mới:</label>
+                    <input type="text" id="copy-new-deck-name-input" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm" placeholder="Nhập tên bộ thẻ...">
                     <p id="copy-new-deck-error" class="form-error-message hidden"></p>
                 </div>
                 <p id="copy-to-deck-error-message" class="form-error-message hidden"></p>
-                <p id="copy-to-deck-success-message" class="text-sm text-green-600 dark:text-green-400 hidden"></p>
+                 <p id="copy-to-deck-success-message" class="text-green-600 text-xs mt-1 hidden"></p>
             </div>
-            <div class="flex justify-end space-x-3 pt-4 mt-4 border-t dark:border-slate-700">
-                <button type="button" id="cancel-copy-to-deck-btn" class="py-2 px-4 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 rounded-md shadow-sm">Hủy</button>
-                <button type="button" id="confirm-copy-to-deck-btn" class="py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-md shadow-sm">Sao chép</button>
+            <div class="flex justify-end space-x-3 pt-6 mt-4 border-t">
+                <button type="button" id="cancel-copy-to-deck-btn" class="py-2 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md shadow-sm">Hủy</button>
+                <button type="button" id="confirm-copy-to-deck-btn" class="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-md shadow-sm">Sao chép</button>
             </div>
         </div>
     </div>
 
-    <div id="bottom-sheet-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[1006] hidden opacity-0 transition-opacity duration-300"></div>
-    <div id="bottom-sheet" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 shadow-2xl rounded-t-2xl p-4 transform translate-y-full transition-transform duration-300 ease-out z-[1007] max-h-[90vh] flex flex-col">
-        <div class="flex justify-between items-center mb-3 pb-3 border-b dark:border-slate-700">
-            <h3 id="bottom-sheet-title" class="text-lg font-semibold text-slate-700 dark:text-slate-200 truncate pr-2">Tùy chọn</h3>
-            <button id="close-bottom-sheet-btn" class="text-2xl text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-full">
-                <i class="fas fa-times"></i>
-            </button>
+    <div id="bottom-sheet-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[1006] hidden transition-opacity duration-300 ease-in-out opacity-0 pointer-events-none"></div>
+    <div id="bottom-sheet" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 shadow-2xl rounded-t-2xl p-4 transform translate-y-full transition-transform duration-300 ease-in-out z-[1007] max-h-[70vh] flex flex-col">
+        <div class="flex justify-between items-center mb-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+            <h3 id="bottom-sheet-title" class="text-lg font-semibold text-slate-700 dark:text-slate-200">Tùy chọn Thẻ</h3>
+            <button id="close-bottom-sheet-btn" class="text-2xl text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">&times;</button>
         </div>
-        <div id="bottom-sheet-tabs" class="mb-3" style="display: none;">
+        
+        <div id="bottom-sheet-tabs" class="flex border-b border-slate-200 dark:border-slate-700 mb-3" style="display: none;">
             <button id="tab-btn-youglish" class="bottom-sheet-tab-btn active">Youglish</button>
-            <button id="tab-btn-youtube" class="bottom-sheet-tab-btn">YouTube</button>
+            <button id="tab-btn-youtube" class="bottom-sheet-tab-btn">YouTube Video</button>
         </div>
-        <div id="bottom-sheet-content" class="overflow-y-auto flex-grow space-y-2">
+
+        <div id="bottom-sheet-content" class="overflow-y-auto space-y-2 flex-grow">
             </div>
     </div>
-    
-    <div id="srs-feedback-toast" class="fixed bottom-20 sm:bottom-5 right-5 p-3 rounded-lg text-white text-sm shadow-lg z-[1008] hidden">
-        Feedback message
-    </div>
 
+    <div id="srs-feedback-toast" class="fixed bottom-5 right-5 bg-slate-700 text-white text-sm py-3 px-5 rounded-lg shadow-md opacity-0 transition-opacity duration-500 ease-in-out z-[1010]">
+        </div>
+
+    <script src="https://youglish.com/public/emb/widget.js" async></script>
+    <script type="module" src="auth.js"></script>
+    <script type="module" src="firestoreService.js"></script>
+    <script type="module" src="srs.js"></script>
     <script type="module" src="script.js"></script>
 </body>
 </html>
