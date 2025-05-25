@@ -17,12 +17,12 @@ import * as FirestoreService from './firestoreService.js';
 import { initializeSrsModule, processSrsRatingWrapper } from './srs.js';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBcBpsCGt-eWyAvtNaqxG0QncqzYDJwG70", // Thay thế bằng API key của bạn
-  authDomain: "fcard-84890.firebaseapp.com", // Thay thế
-  projectId: "fcard-84890", // Thay thế
-  storageBucket: "fcard-84890.appspot.com", // Thay thế
-  messagingSenderId: "195942452341", // Thay thế
-  appId: "1:195942452341:web:b995a99ae0d1fbb47a7c3c" // Thay thế
+  apiKey: "AIzaSyBcBpsCGt-eWyAvtNaqxG0QncqzYDJwG70",
+  authDomain: "fcard-84890.firebaseapp.com",
+  projectId: "fcard-84890",
+  storageBucket: "fcard-84890.appspot.com",
+  messagingSenderId: "195942452341",
+  appId: "1:195942452341:web:b995a99ae0d1fbb47a7c3c"
 };
 
 // Initialize Firebase
@@ -59,7 +59,7 @@ let mainHeaderTitle, cardSourceSelect, categorySelect, flashcardElement, wordDis
     srsFeedbackToastEl,
     actionBtnNotes, actionBtnMedia, actionBtnPracticeCard,
     exitSingleCardPracticeBtn,
-    bottomSheetTabsContainer, tabBtnYouTube, // Chỉ còn tabBtnYouTube
+    bottomSheetTabsContainer, tabBtnYouTube,
     flipIconFront, flipIconBack, cardFrontElement;
 
 
@@ -91,6 +91,10 @@ let touchStartY = 0;
 let touchEndY = 0;
 const swipeThreshold = 50; 
 const swipeMaxVerticalOffset = 75; 
+
+// Biến và key cho tốc độ phát âm ví dụ
+let currentExampleSpeechRate = 1.0; // Tốc độ mặc định
+const EXAMPLE_SPEECH_RATE_KEY = 'flashcardAppExampleSpeechRate';
 
 
 const tagDisplayNames = {"all": "Tất cả chủ đề", "actions_general": "Hành động chung", "actions_tasks": "Hành động & Nhiệm vụ", "movement_travel": "Di chuyển & Du lịch", "communication": "Giao tiếp", "relationships_social": "Quan hệ & Xã hội", "emotions_feelings": "Cảm xúc & Cảm giác", "problems_solutions": "Vấn đề & Giải pháp", "work_business": "Công việc & Kinh doanh", "learning_information": "Học tập & Thông tin", "daily_routine": "Thói quen hàng ngày", "health_wellbeing": "Sức khỏe & Tinh thần", "objects_possession": "Đồ vật & Sở hữu", "time_planning": "Thời gian & Kế hoạch", "money_finance": "Tiền bạc & Tài chính", "behavior_attitude": "Hành vi & Thái độ", "begin_end_change": "Bắt đầu, Kết thúc & Thay đổi", "food_drink": "Ăn uống", "home_living": "Nhà cửa & Đời sống", "rules_systems": "Quy tắc & Hệ thống", "effort_achievement": "Nỗ lực & Thành tựu", "safety_danger": "An toàn & Nguy hiểm", "technology": "Công nghệ", "nature": "Thiên nhiên & Thời tiết", "art_creation": "Nghệ thuật & Sáng tạo" };
@@ -197,7 +201,6 @@ async function loadAppState() {
 
 async function saveAppState(){
     if (!categorySelect || !filterCardStatusSelect || !userDeckSelect || !baseVerbSelect || !tagSelect) {
-        // console.warn("saveAppState: DOM elements for select not ready yet. Skipping save or using potentially old appState values.");
     } else {
         const currentCategoryValue = categorySelect.value;
         const stateForCategory = getCategoryState(currentDatasetSource, currentCategoryValue);
@@ -244,7 +247,6 @@ function getCategoryState(src, cat) {
 
 async function handleAuthStateChangedInApp(user) {
     const userIdFromAuth = getCurrentUserId();
-
     await loadAppState(); 
 
     if (user) { 
@@ -277,13 +279,20 @@ async function handleAuthStateChangedInApp(user) {
     }
 
     if (typeof setupInitialCategoryAndSource === 'function') {
-        await setupInitialCategoryAndSource();
-        if (window.currentData && window.currentData.length > 0 && window.currentIndex < window.currentData.length && typeof window.updateFlashcard === 'function') {
-             console.log("Auth Change: Forcing UI update for current card index:", window.currentIndex);
-             window.updateFlashcard(); 
-        } else {
-            console.log("Auth Change: Conditions not met for forcing updateFlashcard. currentData length:", window.currentData?.length, "currentIndex:", window.currentIndex);
-        }
+        await setupInitialCategoryAndSource(); // This internally calls loadVocabularyData -> applyAllFilters -> updateFlashcard
+        
+        // Ensure UI update happens after all async operations in setupInitialCategoryAndSource are truly complete
+        // and window.currentData is populated.
+        setTimeout(() => { // Use a timeout to allow promise queue to clear
+            if (window.currentData && window.currentData.length > 0 && window.currentIndex < window.currentData.length && typeof window.updateFlashcard === 'function') {
+                 console.log("Auth Change: Delayed explicit updateFlashcard for current card index:", window.currentIndex);
+                 window.updateFlashcard(); // This will call updateStatusButtonsUI at its end
+            } else {
+                console.log("Auth Change: Delayed call - Conditions not met for forcing updateFlashcard. Data length:", window.currentData?.length, "Index:", window.currentIndex);
+                 if (typeof updateStatusButtonsUI === 'function') updateStatusButtonsUI(); // Still update buttons if no card
+                 if (typeof updateCardInfo === 'function') updateCardInfo(); // And card info
+            }
+        }, 0); // Timeout 0 can help defer execution until after current call stack clears
     }
 
     if (typeof updateSidebarFilterVisibility === 'function') {
@@ -315,6 +324,123 @@ function showToast(message, duration = 3000, type = 'info') {
         srsFeedbackToastEl.classList.remove('show');
     }, duration);
 }
+
+// --- START: Speech Rate Functions for Examples ---
+function loadExampleSpeechRate() {
+    const savedRate = localStorage.getItem(EXAMPLE_SPEECH_RATE_KEY);
+    if (savedRate) {
+        currentExampleSpeechRate = parseFloat(savedRate);
+    }
+    // UI update for buttons will be handled by updateFlashcard calling updateExampleSpeechRateButtonsUI
+}
+
+function saveExampleSpeechRate() {
+    localStorage.setItem(EXAMPLE_SPEECH_RATE_KEY, currentExampleSpeechRate.toString());
+    // Optionally save to Firestore if user is logged in and appState is synced
+    const userId = getCurrentUserId();
+    if (userId && appState.categoryStates) { // Assuming appState is available
+        // A simple way is to add it to a general settings part of appState
+        appState.userPreferences = appState.userPreferences || {};
+        appState.userPreferences.exampleSpeechRate = currentExampleSpeechRate;
+        // The main saveAppState function will handle syncing to Firestore
+        saveAppState(); // Or a more specific save function if preferred
+    }
+}
+
+function updateExampleSpeechRateButtonsUI(container) {
+    const buttons = container.querySelectorAll('.speech-rate-btn-example');
+    buttons.forEach(btn => {
+        if (btn) {
+            if (parseFloat(btn.dataset.rate) === currentExampleSpeechRate) {
+                btn.classList.add('active');
+                 // Thêm style cho nút active: màu nền và màu chữ
+                btn.style.backgroundColor = '#0ea5e9'; // sky-500
+                btn.style.color = 'white';
+                btn.style.borderColor = '#0ea5e9';
+            } else {
+                btn.classList.remove('active');
+                // Reset style cho nút không active
+                btn.style.backgroundColor = ''; // Hoặc màu nền mặc định
+                btn.style.color = '#e0f2fe'; // Màu chữ mặc định cho mặt sau
+                btn.style.borderColor = '#7dd3fc'; // Màu viền mặc định
+            }
+        }
+    });
+}
+// --- END: Speech Rate Functions for Examples ---
+
+// --- START: Speech Synthesis Functions ---
+function speakText(txt, meta = [], cb = null) {
+    if (!txt || !txt.trim()) { if (cb) cb(); return; }
+    if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(txt);
+        u.lang = 'en-US';
+        u.rate = 1.0; // Default rate for main word/phrase
+        u.pitch = 1;
+        window.speechSynthesis.cancel();
+        if (meta.length > 0) {
+            u.onstart = () => meta.forEach(m => m.element.classList.remove('highlighted-word'));
+            u.onboundary = e => {
+                meta.forEach(m => m.element.classList.remove('highlighted-word'));
+                let f = false;
+                for (const m of meta) { if (e.charIndex >= m.start && e.charIndex < m.start + m.length) { m.element.classList.add('highlighted-word'); f = true; break; } }
+                if (!f && meta.length > 0) { for (let i = meta.length - 1; i >= 0; i--) { const m = meta[i]; if (e.charIndex >= m.start) { if ((i === meta.length - 1) || (e.charIndex < meta[i + 1].start)) { m.element.classList.add('highlighted-word'); break; } } } }
+            };
+            u.onend = () => { meta.forEach(m => m.element.classList.remove('highlighted-word')); if (cb) cb(); };
+            u.onerror = e => { meta.forEach(m => m.element.classList.remove('highlighted-word')); console.error("Lỗi phát âm:", e); if (cb) cb(); };
+        } else {
+            u.onend = () => { if (cb) cb(); };
+            u.onerror = e => { console.error("Lỗi phát âm:", e); if (cb) cb(); };
+        }
+        window.speechSynthesis.speak(u);
+    } else { console.warn("Trình duyệt không hỗ trợ Speech Synthesis."); if (cb) cb(); }
+}
+
+function speakExample(text, spansMeta) {
+    if (!text || !text.trim()) return;
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = currentExampleSpeechRate; // Use specific rate for examples
+        utterance.pitch = 1.0;
+        window.speechSynthesis.cancel(); 
+
+        if (spansMeta && spansMeta.length > 0) {
+            utterance.onstart = () => spansMeta.forEach(m => m.element.classList.remove('highlighted-word'));
+            utterance.onboundary = event => {
+                spansMeta.forEach(m => m.element.classList.remove('highlighted-word'));
+                let found = false;
+                for (const metaItem of spansMeta) {
+                    if (event.charIndex >= metaItem.start && event.charIndex < metaItem.start + metaItem.length) {
+                        metaItem.element.classList.add('highlighted-word');
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found && spansMeta.length > 0) {
+                     for (let i = spansMeta.length - 1; i >= 0; i--) {
+                        const metaItem = spansMeta[i];
+                        if (event.charIndex >= metaItem.start) {
+                            if ((i === spansMeta.length - 1) || (event.charIndex < spansMeta[i+1].start)) {
+                                metaItem.element.classList.add('highlighted-word');
+                                break;
+                            }
+                        }
+                    }
+                }
+            };
+            utterance.onend = () => spansMeta.forEach(m => m.element.classList.remove('highlighted-word'));
+            utterance.onerror = e => {
+                spansMeta.forEach(m => m.element.classList.remove('highlighted-word'));
+                console.error("Lỗi phát âm ví dụ:", e);
+            };
+        }
+        window.speechSynthesis.speak(utterance);
+    } else {
+        console.warn("Trình duyệt không hỗ trợ Speech Synthesis.");
+    }
+}
+// --- END: Speech Synthesis Functions ---
 
 
 // Logic chính của ứng dụng
@@ -422,7 +548,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     actionBtnPracticeCard = document.getElementById('action-btn-practice-card');
     exitSingleCardPracticeBtn = document.getElementById('exit-single-card-practice-btn');
     bottomSheetTabsContainer = document.getElementById('bottom-sheet-tabs');
-    // tabBtnYouglish = document.getElementById('tab-btn-youglish'); // Đã loại bỏ
     tabBtnYouTube = document.getElementById('tab-btn-youtube');
     flipIconFront = document.getElementById('flip-icon-front');
     flipIconBack = document.getElementById('flip-icon-back');
@@ -447,6 +572,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         dataGetCurrentIndexFunc: () => window.currentIndex,
         uiShowToastFunc: showToast
     });
+
+    loadExampleSpeechRate(); // Tải tốc độ đã lưu khi trang tải
 
     if (!getCurrentUserId()) {
         await loadAppState();
@@ -1183,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     function shuffleArray(arr){const nA=[...arr];for(let i=nA.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[nA[i],nA[j]]=[nA[j],nA[i]];}return nA;}
-    function speakText(txt,meta=[],cb=null){if(!txt||!txt.trim()){if(cb)cb();return;}if('speechSynthesis'in window){const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=0.9;u.pitch=1;window.speechSynthesis.cancel();if(meta.length>0){u.onstart=()=>meta.forEach(m=>m.element.classList.remove('highlighted-word'));u.onboundary=e=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));let f=false;for(const m of meta){if(e.charIndex>=m.start&&e.charIndex<m.start+m.length){m.element.classList.add('highlighted-word');f=true;break;}}if(!f&&meta.length>0){for(let i=meta.length-1;i>=0;i--){const m=meta[i];if(e.charIndex>=m.start){if((i===meta.length-1)||(e.charIndex<meta[i+1].start)){m.element.classList.add('highlighted-word');break;}}}}};u.onend=()=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));if(cb)cb();};u.onerror=e=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));console.error("Lỗi phát âm:", e);if(cb)cb();};}else{u.onend=()=>{if(cb)cb();};u.onerror=e=>{console.error("Lỗi phát âm:", e);if(cb)cb();};}window.speechSynthesis.speak(u);}else{console.warn("Trình duyệt không hỗ trợ Speech Synthesis.");if(cb)cb();}}
+    function speakText(txt,meta=[],cb=null){if(!txt||!txt.trim()){if(cb)cb();return;}if('speechSynthesis'in window){const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.rate=1.0;u.pitch=1;window.speechSynthesis.cancel();if(meta.length>0){u.onstart=()=>meta.forEach(m=>m.element.classList.remove('highlighted-word'));u.onboundary=e=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));let f=false;for(const m of meta){if(e.charIndex>=m.start&&e.charIndex<m.start+m.length){m.element.classList.add('highlighted-word');f=true;break;}}if(!f&&meta.length>0){for(let i=meta.length-1;i>=0;i--){const m=meta[i];if(e.charIndex>=m.start){if((i===meta.length-1)||(e.charIndex<meta[i+1].start)){m.element.classList.add('highlighted-word');break;}}}}};u.onend=()=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));if(cb)cb();};u.onerror=e=>{meta.forEach(m=>m.element.classList.remove('highlighted-word'));console.error("Lỗi phát âm:", e);if(cb)cb();};}else{u.onend=()=>{if(cb)cb();};u.onerror=e=>{console.error("Lỗi phát âm:", e);if(cb)cb();};}window.speechSynthesis.speak(u);}else{console.warn("Trình duyệt không hỗ trợ Speech Synthesis.");if(cb)cb();}}
     function populateBaseVerbFilter(arr){const bV=new Set();arr.forEach(i=>{if(i.baseVerb)bV.add(i.baseVerb);});baseVerbSelect.innerHTML='';const oA=document.createElement('option');oA.value='all';oA.textContent='Tất cả từ gốc';baseVerbSelect.appendChild(oA);const sBV=Array.from(bV).sort((a,b)=>a.localeCompare(b,'en'));sBV.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v.charAt(0).toUpperCase()+v.slice(1);baseVerbSelect.appendChild(o);});}
     function populateTagFilter(arr){const tT=new Set();arr.forEach(i=>{if(i.tags&&Array.isArray(i.tags)){i.tags.forEach(t=>{if(tagDisplayNames[t]&&t!=='all'&&!t.startsWith('particle_'))tT.add(t);});}});tagSelect.innerHTML='';const oA=document.createElement('option');oA.value='all';oA.textContent=tagDisplayNames["all"]||'Tất cả chủ đề';tagSelect.appendChild(oA);const sTK=Array.from(tT).sort((a,b)=>(tagDisplayNames[a]||a).localeCompare(tagDisplayNames[b]||b,'vi'));sTK.forEach(tK=>{const o=document.createElement('option');o.value=tK;o.textContent=tagDisplayNames[tK]||(tK.charAt(0).toUpperCase()+tK.slice(1));tagSelect.appendChild(o);});}
 
@@ -1467,7 +1594,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const item = window.currentData.length > 0 ? window.currentData[window.currentIndex] : null;
-        console.log('[updateFlashcard] Current item for UI:', JSON.parse(JSON.stringify(item)));
+        console.log('[updateFlashcard] Rendering card. Item:', JSON.parse(JSON.stringify(item)));
 
 
         if (!item) {
@@ -1605,9 +1732,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                         meaningBlockDiv.appendChild(meaningNotesP);
                     }
 
+                    // --- START: Example Speech Rate Controls ---
+                    const exampleSpeechRateControlsDiv = document.createElement('div');
+                    exampleSpeechRateControlsDiv.className = 'example-speech-rate-controls flex items-center space-x-1 mb-2 ml-3';
+                    exampleSpeechRateControlsDiv.innerHTML = `
+                        <span class="text-xs text-sky-200 mr-1">Tốc độ VD:</span>
+                        <button data-rate="0.75" class="speech-rate-btn-example px-1.5 py-0.5 border text-xs rounded-md">Chậm</button>
+                        <button data-rate="1.0" class="speech-rate-btn-example px-1.5 py-0.5 border text-xs rounded-md">Thường</button>
+                        <button data-rate="1.25" class="speech-rate-btn-example px-1.5 py-0.5 border text-xs rounded-md">Nhanh</button>
+                    `;
+                    meaningBlockDiv.appendChild(exampleSpeechRateControlsDiv);
+                    updateExampleSpeechRateButtonsUI(exampleSpeechRateControlsDiv); // Cập nhật UI cho nút vừa tạo
+                    // --- END: Example Speech Rate Controls ---
+
+
                     if (mObj.examples && mObj.examples.length > 0) {
                         const examplesContainer = document.createElement('div');
-                        examplesContainer.className = "ml-3 mt-3";
+                        examplesContainer.className = "ml-3 mt-1"; // Giảm margin top một chút
                         const examplesListDiv = document.createElement('div');
                         examplesListDiv.className = "space-y-1.5";
                         examplesListDiv.dataset.meaningId = mObj.id;
@@ -1681,7 +1822,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         });
                                     }
                                     if (text) {
-                                        speakText(text, localExampleSpansMeta);
+                                        speakExample(text, localExampleSpansMeta); // Gọi hàm speakExample
                                     }
                                 });
                                 controlsDiv.appendChild(playSingleExBtn);
@@ -2193,7 +2334,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         bottomSheet.classList.remove('bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
         bottomSheet.style.paddingBottom = '';
         
-        if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none'; // Luôn ẩn tabs nếu chỉ có YouTube
+        // Chỉ còn YouTube, không cần tabs phức tạp nữa
+        if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none';
 
 
         if (viewType === 'default') {
@@ -2345,17 +2487,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             bottomSheet.classList.add('bottom-sheet-media-mode');
             bottomSheetTitle.textContent = `Nghe/Xem: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
             
-            // Không cần hiển thị tabs nếu chỉ có YouTube
-            // if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'flex'; 
+            // Không cần hiển thị tabs nữa vì chỉ có YouTube
+            if (bottomSheetTabsContainer) bottomSheetTabsContainer.style.display = 'none'; 
 
-            let youtubeContentDiv = document.getElementById('youtube-tab-content'); // Đổi tên để rõ ràng hơn
+            let youtubeContentDiv = document.getElementById('youtube-tab-content'); 
             if (!youtubeContentDiv) {
                 youtubeContentDiv = document.createElement('div');
-                youtubeContentDiv.id = 'youtube-tab-content'; // ID cho div chứa nội dung YouTube
-                youtubeContentDiv.className = 'bottom-sheet-tab-content'; // Sẽ luôn hiển thị
+                youtubeContentDiv.id = 'youtube-tab-content'; 
+                youtubeContentDiv.className = 'bottom-sheet-tab-content'; // Luôn hiển thị, không cần class hidden
                 bottomSheetContent.appendChild(youtubeContentDiv);
             }
-            setActiveMediaTab('youtube_custom', cardItem); // Mặc định là youtube
+            // Trực tiếp gọi setActiveMediaTab cho YouTube
+            setActiveMediaTab('youtube_custom', cardItem);
             hasActions = true;
         } else if (viewType === 'practice_options') {
              bottomSheetTitle.textContent = `Luyện tập: ${cardTerm.length > 20 ? cardTerm.substring(0,17) + '...' : cardTerm}`;
@@ -2393,18 +2536,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function setActiveMediaTab(tabName, cardItem) {
+        // const youglishContentDiv = document.getElementById('youglish-tab-content'); // Loại bỏ Youglish
         const youtubeContentDiv = document.getElementById('youtube-tab-content');
         let cardTerm = cardItem.word || cardItem.phrasalVerb || cardItem.collocation || "";
 
-        // Ẩn các tab content trước (chỉ còn YouTube)
-        if (youtubeContentDiv) youtubeContentDiv.classList.add('hidden');
-        // Không cần xử lý active class cho nút tab nữa nếu chỉ có 1 tab
-        // if (tabBtnYouTube) tabBtnYouTube.classList.remove('active');
+        // if (youglishContentDiv) youglishContentDiv.classList.add('hidden'); // Loại bỏ
+        if (youtubeContentDiv) youtubeContentDiv.classList.add('hidden'); // Ẩn trước khi quyết định
+        // if (tabBtnYouglish) tabBtnYouglish.classList.remove('active'); // Loại bỏ
+        if (tabBtnYouTube) tabBtnYouTube.classList.remove('active'); 
         
-        // Không còn logic Youglish ở đây
+        // Không còn logic destroy Youglish ở đây
 
-        if (tabName === 'youtube_custom') {
-            // if (tabBtnYouTube) tabBtnYouTube.classList.add('active'); // Không cần nếu chỉ có 1 tab
+        if (tabName === 'youtube_custom') { 
+            // if (tabBtnYouTube) tabBtnYouTube.classList.add('active'); // Không cần nếu chỉ có YouTube
             if (youtubeContentDiv) {
                 youtubeContentDiv.classList.remove('hidden');
                 youtubeContentDiv.innerHTML = ''; 
@@ -2415,7 +2559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const iframeContainer = document.createElement('div');
                         iframeContainer.className = 'video-iframe-container w-full';
                         const iframe = document.createElement('iframe');
-                        iframe.src = `https://www.youtube.com/embed/${videoId}`; // URL nhúng chuẩn
+                        iframe.src = `https://www.youtube.com/embed/{videoId}`; // URL nhúng chuẩn cho YouTube
                         iframe.title = "YouTube video player";
                         iframe.frameBorder = "0";
                         iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
@@ -2447,6 +2591,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         }
+        // Không còn case 'youglish'
     }
 
 
@@ -2454,11 +2599,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!bottomSheet || !bottomSheetOverlay) return;
 
         // Không còn logic Youglish
-        // if (currentYouglishWidget && typeof currentYouglishWidget.destroy === 'function') { ... }
-        // const oldYgLink = document.getElementById(YOUGLISH_WIDGET_ID);
-        // if (oldYgLink && oldYgLink.parentNode) { ... }
-
-
         bottomSheet.classList.remove('active', 'bottom-sheet-video-mode', 'bottom-sheet-notes-mode', 'bottom-sheet-media-mode');
         bottomSheetOverlay.classList.remove('active');
         bottomSheet.style.paddingBottom = ''; 
@@ -2730,9 +2870,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         if(exitSingleCardPracticeBtn) exitSingleCardPracticeBtn.addEventListener('click', exitSingleCardPractice);
 
-        // Loại bỏ event listener cho tab Youglish nếu nó không còn tồn tại
-        // if(tabBtnYouglish) tabBtnYouglish.addEventListener('click', () => { ... });
-        if(tabBtnYouTube) tabBtnYouTube.addEventListener('click', () => { // Sẽ không cần thiết nếu chỉ có 1 tab media
+        // Không còn tab Youglish, chỉ có tab YouTube (nếu cần)
+        if(tabBtnYouTube) tabBtnYouTube.addEventListener('click', () => { 
             const currentCard = window.currentData[window.currentIndex];
             if(currentCard) setActiveMediaTab('youtube_custom', currentCard);
         });
@@ -2811,6 +2950,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(cardTagsInput) cardTagsInput.addEventListener('focus', () => { const fullInputValue = cardTagsInput.value; const lastCommaIndex = fullInputValue.lastIndexOf(','); const currentTagQuery = (lastCommaIndex === -1 ? fullInputValue : fullInputValue.substring(lastCommaIndex + 1)).trim().toLowerCase(); const alreadyAddedTags = fullInputValue.substring(0, lastCommaIndex + 1).split(',').map(t => t.trim().toLowerCase()); const filteredSuggestions = tagSuggestions.filter(tag => tag.toLowerCase().includes(currentTagQuery) && !alreadyAddedTags.includes(tag.toLowerCase()) ); if (filteredSuggestions.length > 0 || currentTagQuery.length === 0) { showAutocompleteSuggestions(cardTagsInput, filteredSuggestions.slice(0, 5), true); } });
         document.addEventListener('click', function(event) { const activeSuggestionsList = document.querySelector('.autocomplete-suggestions-list'); if (activeSuggestionsList) { const inputId = activeSuggestionsList.id.replace('-suggestions', ''); const inputElement = document.getElementById(inputId); if (inputElement && !inputElement.contains(event.target) && !activeSuggestionsList.contains(event.target)) { hideAutocompleteSuggestions(inputElement); } } });
 
+        // Hàm setupEventListeners không còn gọi setupAuthModalDOMListeners() vì nó đã được xử lý trong initializeAuthModule của auth.js
     }
 
     async function setupInitialCategoryAndSource() {
