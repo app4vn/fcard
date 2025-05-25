@@ -46,36 +46,36 @@ body {
 #filter-sidebar {
     transition: transform 0.3s ease-in-out;
 }
-#speaker-btn, #speaker-example-btn, .card-action-btn-on-back, .copy-example-btn {
-    z-index: 10;
+#speaker-btn, #speaker-example-btn, .card-action-btn-on-back, .copy-example-btn, #flip-icon-front, #flip-icon-back {
+    z-index: 10; /* Đảm bảo các nút này nằm trên các nội dung khác của thẻ */
 }
 #typing-input::placeholder {
     color: #9ca3af; /* Tailwind gray-400 */
 }
-.modal, #auth-modal, #copy-to-deck-modal { 
+.modal, #auth-modal, #copy-to-deck-modal {
     transition: opacity 0.25s ease;
 }
-.modal-content, #auth-modal-content, #copy-to-deck-modal .modal-content { 
+.modal-content, #auth-modal-content, #copy-to-deck-modal .modal-content {
     transition: transform 0.25s ease;
 }
 .editing-deck-input {
     flex-grow: 1;
     margin-right: 8px;
     padding: 0.25rem 0.5rem;
-    border: 1px solid #d1d5db; 
+    border: 1px solid #d1d5db;
     border-radius: 0.375rem;
 }
 .meaning-block {
-    border: 1px solid #e5e7eb; 
+    border: 1px solid #e5e7eb;
     padding: 1rem;
-    border-radius: 0.375rem; 
+    border-radius: 0.375rem;
     margin-bottom: 1rem;
-    background-color: #f9fafb; 
+    background-color: #f9fafb;
 }
 .example-entry {
-    border: 1px dashed #d1d5db; 
+    border: 1px dashed #d1d5db;
     padding: 0.75rem;
-    border-radius: 0.375rem; 
+    border-radius: 0.375rem;
     margin-top: 0.75rem;
     background-color: #fff;
 }
@@ -98,9 +98,9 @@ body {
 .copy-example-btn { background: none; border: none; padding: 0.25rem; margin-left: 0.5rem; cursor: pointer; color: #bae6fd; transition: color 0.15s ease-in-out; }
 .copy-example-btn:hover { color: #e0f2fe; }
 .copy-example-btn svg { width: 16px; height: 16px; }
-.form-error-message, #auth-error-message, #json-import-error-message, #copy-new-deck-error, #copy-to-deck-error-message { 
-    color: #ef4444; 
-    font-size: 0.75rem; 
+.form-error-message, #auth-error-message, #json-import-error-message, #copy-new-deck-error, #copy-to-deck-error-message {
+    color: #ef4444;
+    font-size: 0.75rem;
     margin-top: 0.25rem;
 }
 .input-error-border { border-color: #ef4444 !important; }
@@ -180,24 +180,24 @@ body {
 #bottom-sheet.active {
     transform: translateY(0);
 }
-#bottom-sheet-content button:not(.bottom-sheet-tab-btn) { 
+#bottom-sheet-content button:not(.bottom-sheet-tab-btn) {
     display: flex;
     align-items: center;
     width: 100%;
-    padding: 0.75rem 1rem; 
+    padding: 0.75rem 1rem;
     text-align: left;
-    border-radius: 0.375rem; 
+    border-radius: 0.375rem;
     transition: background-color 0.15s ease-in-out;
 }
 #bottom-sheet-content button:not(.bottom-sheet-tab-btn):hover {
-    background-color: #f3f4f6; 
+    background-color: #f3f4f6;
 }
 .dark #bottom-sheet-content button:not(.bottom-sheet-tab-btn):hover {
-    background-color: #374151; 
+    background-color: #374151;
 }
 #bottom-sheet-content button:not(.bottom-sheet-tab-btn) i {
-    width: 1.25rem; 
-    margin-right: 0.75rem; 
+    width: 1.25rem;
+    margin-right: 0.75rem;
     text-align: center;
 }
 
@@ -205,7 +205,7 @@ body {
 #srs-feedback-toast {
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s; 
+    transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s;
 }
 #srs-feedback-toast.show {
     opacity: 1;
@@ -214,145 +214,145 @@ body {
 }
 
 .srs-btn {
-    white-space: nowrap; 
+    white-space: nowrap;
 }
 
 .additional-action-btn {
     display: flex;
-    flex-direction: column; 
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0.5rem 0.25rem; 
-    border-radius: 0.375rem; 
+    padding: 0.5rem 0.25rem;
+    border-radius: 0.375rem;
     transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    font-size: 0.7rem; 
-    line-height: 1; 
-    min-height: 50px; 
-    border: 1px solid transparent; 
+    font-size: 0.7rem;
+    line-height: 1;
+    min-height: 50px;
+    border: 1px solid transparent;
 }
 .additional-action-btn:hover {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 #action-btn-media { /* ID của nút "Nghe/Xem" (trước là action-btn-youglish) */
-    background-color: #ecfdf5; 
-    color: #059669; 
-    border: 1px solid #a7f3d0; 
+    background-color: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
 }
 #action-btn-media:hover {
-    background-color: #d1fae5; 
-    border-color: #6ee7b7; 
+    background-color: #d1fae5;
+    border-color: #6ee7b7;
 }
 .dark #action-btn-media {
-    background-color: #064e3b; 
-    color: #a7f3d0; 
-    border-color: #057a55; 
+    background-color: #064e3b;
+    color: #a7f3d0;
+    border-color: #057a55;
 }
 .dark #action-btn-media:hover {
-    background-color: #047857; 
+    background-color: #047857;
 }
 
 
 .additional-action-btn i {
-    margin-bottom: 0.125rem; 
-    font-size: 1rem; 
+    margin-bottom: 0.125rem;
+    font-size: 1rem;
 }
 
 #bottom-sheet-content .srs-info-item {
     padding: 0.25rem 0;
-    font-size: 0.875rem; 
+    font-size: 0.875rem;
 }
 #bottom-sheet-content .srs-info-item strong {
-    font-weight: 600; 
-    color: #4b5563; 
+    font-weight: 600;
+    color: #4b5563;
 }
 .dark #bottom-sheet-content .srs-info-item strong {
-    color: #d1d5db; 
+    color: #d1d5db;
 }
 
 #bottom-sheet-notes-textarea {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid #d1d5db; 
-    border-radius: 0.375rem; 
-    min-height: 150px; 
-    resize: vertical; 
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    min-height: 150px;
+    resize: vertical;
     margin-bottom: 0.5rem;
 }
 .dark #bottom-sheet-notes-textarea {
-    background-color: #4b5563; 
-    border-color: #6b7280; 
-    color: #e5e7eb; 
+    background-color: #4b5563;
+    border-color: #6b7280;
+    color: #e5e7eb;
 }
 
 /* CSS cho các chế độ đặc biệt của Bottom Sheet */
 #bottom-sheet.bottom-sheet-notes-mode,
-#bottom-sheet.bottom-sheet-media-mode { 
+#bottom-sheet.bottom-sheet-media-mode {
     height: 75vh; /* Khôi phục chiều cao vừa phải */
-    max-height: 75vh; 
-    padding: 0.5rem; 
+    max-height: 75vh;
+    padding: 0.5rem;
 }
 
 #bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-title,
 #bottom-sheet.bottom-sheet-media-mode #bottom-sheet-title {
-    margin-bottom: 0.5rem; 
-    padding-bottom: 0.5rem; 
-    flex-shrink: 0; 
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    flex-shrink: 0;
 }
 
 #bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-content,
 #bottom-sheet.bottom-sheet-media-mode #bottom-sheet-content {
-    flex-grow: 1; 
-    display: flex; 
-    flex-direction: column; 
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
     padding: 0; /* Bỏ padding ở đây để tab content tự quản lý */
-    overflow: hidden; 
+    overflow: hidden;
 }
 
 /* CSS cho Tabs trong Bottom Sheet */
 #bottom-sheet-tabs {
     display: flex; /* Sẽ được JS bật lên khi cần */
-    border-bottom: 1px solid #e5e7eb; 
-    margin-bottom: 0.75rem; 
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 0.75rem;
 }
 .dark #bottom-sheet-tabs {
-    border-bottom-color: #374151; 
+    border-bottom-color: #374151;
 }
 .bottom-sheet-tab-btn {
     flex-grow: 1;
-    padding: 0.75rem 0.5rem; 
-    font-size: 0.875rem; 
-    font-weight: 500; 
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
     text-align: center;
     cursor: pointer;
     border: none;
     background-color: transparent;
-    color: #6b7280; 
-    border-bottom: 2px solid transparent; 
+    color: #6b7280;
+    border-bottom: 2px solid transparent;
     transition: color 0.2s, border-color 0.2s;
 }
 .dark .bottom-sheet-tab-btn {
-    color: #9ca3af; 
+    color: #9ca3af;
 }
 .bottom-sheet-tab-btn:hover {
-    color: #1f2937; 
+    color: #1f2937;
 }
 .dark .bottom-sheet-tab-btn:hover {
-    color: #e5e7eb; 
+    color: #e5e7eb;
 }
 .bottom-sheet-tab-btn.active {
-    color: #4f46e5; 
-    border-bottom-color: #4f46e5; 
+    color: #4f46e5;
+    border-bottom-color: #4f46e5;
 }
 .dark .bottom-sheet-tab-btn.active {
-    color: #818cf8; 
-    border-bottom-color: #818cf8; 
+    color: #818cf8;
+    border-bottom-color: #818cf8;
 }
 
 /* CSS cho nội dung của từng tab */
 .bottom-sheet-tab-content {
     width: 100%;
-    height: 100%; 
-    overflow-y: auto; 
+    height: 100%;
+    overflow-y: auto;
 }
 .bottom-sheet-tab-content.hidden {
     display: none;
@@ -361,15 +361,15 @@ body {
 /* Riêng cho video/media (Youglish hoặc YouTube) */
 #bottom-sheet.bottom-sheet-media-mode #bottom-sheet-content .video-iframe-container {
     width: 100%;
-    aspect-ratio: 16 / 9; 
-    background-color: #000; 
-    margin: auto 0; 
-    display: flex; 
+    aspect-ratio: 16 / 9;
+    background-color: #000;
+    margin: auto 0;
+    display: flex;
     align-items: center;
     justify-content: center;
     flex-grow: 1; /* Cho phép co giãn nếu cần, nhưng aspect-ratio sẽ ưu tiên */
-    overflow: hidden; 
-    position: relative; 
+    overflow: hidden;
+    position: relative;
 }
 
 #bottom-sheet.bottom-sheet-media-mode #bottom-sheet-content .video-iframe-container iframe {
@@ -377,26 +377,26 @@ body {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%; 
-    border: none; 
+    height: 100%;
+    border: none;
 }
 
 /* Riêng cho notes */
 #bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-content {
-    padding: 0.5rem; 
-    overflow-y: auto; 
+    padding: 0.5rem;
+    overflow-y: auto;
 }
 
 #bottom-sheet.bottom-sheet-notes-mode #bottom-sheet-notes-textarea {
-    flex-grow: 1; 
-    min-height: 150px; 
+    flex-grow: 1;
+    min-height: 150px;
     max-height: calc(100% - 4rem); /* Trừ đi khoảng trống cho nút Lưu */
 }
 
 #notes-display {
-    white-space: pre-wrap; 
-    word-break: break-word; 
-    font-size: 0.875rem; 
-    line-height: 1.5;   
-    color: #e0f2fe;     
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #e0f2fe;
 }
