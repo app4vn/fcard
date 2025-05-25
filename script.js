@@ -257,9 +257,9 @@ function getCategoryState(src, cat) {
 async function handleAuthStateChangedInApp(user) {
     const userIdFromAuth = getCurrentUserId();
 
-    await loadAppState();
+    await loadAppState(); // Tải trạng thái ứng dụng (có thể từ Firestore hoặc localStorage)
 
-    if (user) {
+    if (user) { // Người dùng đã đăng nhập
         if(userEmailDisplayMain) userEmailDisplayMain.textContent = user.email ? user.email : (userIdFromAuth && !user.isAnonymous ? "Người dùng" : "Khách");
         if(userEmailDisplayMain) userEmailDisplayMain.classList.remove('hidden');
 
@@ -272,7 +272,7 @@ async function handleAuthStateChangedInApp(user) {
             `;
             authActionButtonMain.title = "Đăng xuất";
         }
-    } else {
+    } else { // Người dùng đã đăng xuất hoặc chưa đăng nhập
         if(userEmailDisplayMain) userEmailDisplayMain.classList.add('hidden');
         if(userEmailDisplayMain) userEmailDisplayMain.textContent = '';
 
@@ -285,12 +285,22 @@ async function handleAuthStateChangedInApp(user) {
             `;
             authActionButtonMain.title = "Đăng nhập";
         }
-        console.log("User logged out. AppState reset to defaults if not found in localStorage.");
+        console.log("User logged out or not logged in. AppState may have been reset or loaded from localStorage.");
     }
 
+    // Thiết lập category và source ban đầu, tải dữ liệu thẻ
+    // Quan trọng: Bước này sẽ gọi loadVocabularyData, rồi applyAllFilters, rồi updateFlashcard
     if (typeof setupInitialCategoryAndSource === 'function') {
         await setupInitialCategoryAndSource();
+        // *** START: Thêm dòng này để đảm bảo UI thẻ đầu tiên được cập nhật đúng sau khi đăng nhập ***
+        if (window.currentData && window.currentData.length > 0 && typeof window.updateFlashcard === 'function') {
+             console.log("Forcing updateFlashcard after setupInitialCategoryAndSource in handleAuthStateChangedInApp");
+             window.updateFlashcard(); // Gọi lại để đảm bảo UI của thẻ hiện tại được cập nhật đầy đủ
+        }
+        // *** END: Thêm dòng này ***
     }
+
+    // Cập nhật các phần UI khác
     if (typeof updateSidebarFilterVisibility === 'function') {
         updateSidebarFilterVisibility();
     }
@@ -1616,13 +1626,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         examplesListDiv.className = "space-y-1.5";
                         examplesListDiv.dataset.meaningId = mObj.id;
 
-                        const maxVisibleExamples = 2; // Hiển thị 2 ví dụ mặc định
+                        const maxVisibleExamples = 2; // Hiển thị 2 ví dụ mặc định (do người dùng tự sửa)
                         const totalExamples = mObj.examples.length;
 
                         mObj.examples.forEach((ex, exIdx) => {
                             const exD = document.createElement('div');
                             exD.className="example-item-on-card";
-                            if (exIdx >= maxVisibleExamples) { // Ẩn nếu > 2 (index 0, 1 sẽ hiển thị)
+                            if (exIdx >= maxVisibleExamples) { 
                                 exD.classList.add('hidden');
                             }
 
@@ -1646,7 +1656,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         const wordSpan = document.createElement('span');
                                         wordSpan.textContent = wordPart;
                                         textContentDiv.appendChild(wordSpan);
-                                        // exampleSpansMeta (sẽ được tạo lại khi click nút Play)
                                     } else {
                                         textContentDiv.appendChild(document.createTextNode(wordPart)); 
                                     }
@@ -1658,7 +1667,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             eP.appendChild(textContentDiv);
                             
                             const controlsDiv = document.createElement('div'); 
-                            controlsDiv.className = 'flex items-center ml-2 flex-shrink-0'; // Thêm flex-shrink-0
+                            controlsDiv.className = 'flex items-center ml-2 flex-shrink-0'; 
 
                             if (ex.eng && ex.eng.trim()) {
                                 const playSingleExBtn = document.createElement('button');
@@ -1677,7 +1686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     if (clickedExampleTextContentDiv && text) {
                                         const childNodes = Array.from(clickedExampleTextContentDiv.childNodes);
                                         childNodes.forEach(node => {
-                                            if (node.nodeType === Node.TEXT_NODE) { // Xử lý cả text node (khoảng trắng)
+                                            if (node.nodeType === Node.TEXT_NODE) { 
                                                 localAccCC += node.textContent.length;
                                             } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'SPAN' && !node.classList.contains('example-label')) {
                                                 localExampleSpansMeta.push({element: node, start: localAccCC, length: node.textContent.length});
