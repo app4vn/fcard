@@ -1,7 +1,7 @@
 // Firebase Firestore imports
-import { 
+import {
   getFirestore, collection, addDoc, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, getDoc, Timestamp
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"; 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 let dbInstance; // Sẽ được truyền vào từ script.js
 
@@ -33,16 +33,16 @@ export async function createDeckInFirestore(userId, deckName) {
         console.error("FirestoreService: Missing data for createDeck");
         return null;
     }
-    const newDeckData = { 
-        name: deckName.trim(), 
-        createdAt: serverTimestamp(), 
-        owner: userId // Lưu owner để có thể dùng cho rules sau này nếu cần
+    const newDeckData = {
+        name: deckName.trim(),
+        createdAt: serverTimestamp(),
+        owner: userId 
     };
     try {
         const decksCollectionRef = collection(dbInstance, 'users', userId, 'decks');
         const docRef = await addDoc(decksCollectionRef, newDeckData);
         console.log("FirestoreService: Deck created with ID:", docRef.id);
-        return { id: docRef.id, ...newDeckData, createdAt: Date.now() }; // Trả về cả ID và dữ liệu (createdAt là client-side estimate)
+        return { id: docRef.id, ...newDeckData, createdAt: Date.now() }; 
     } catch (error) {
         console.error("FirestoreService: Error creating deck:", error);
         alert("Đã xảy ra lỗi khi tạo bộ thẻ. Vui lòng thử lại.");
@@ -69,22 +69,41 @@ export async function updateDeckNameInFirestore(userId, deckId, newName) {
 
 // --- Card Operations ---
 export async function loadUserCardsFromFirestore(userId, deckId) {
-    if (!userId || !dbInstance || !deckId) {
-        console.error("FirestoreService: Missing data for loadUserCardsFromDeck");
+    if (!userId || !dbInstance || (deckId !== null && !deckId)) { 
+        console.error("FirestoreService: Missing data for loadUserCardsFromDeck (userId or dbInstance missing, or invalid deckId if not null)");
         return [];
     }
-    console.log(`FirestoreService: Loading cards for deck ID: ${deckId} for user ID: ${userId}`);
-    const cardsCollectionRef = collection(dbInstance, 'users', userId, 'decks', deckId, 'cards');
-    const qCards = query(cardsCollectionRef, orderBy('createdAt', 'asc')); 
+
+    let cardsCollectionRef;
+    if (deckId === null) {
+        // This case is for unassigned cards. If you decide to store them directly under a user's 'cards' collection:
+        // cardsCollectionRef = collection(dbInstance, 'users', userId, 'cards');
+        // For now, assuming unassigned cards are filtered client-side or not directly loaded this way.
+        console.warn("FirestoreService: loadUserCardsFromFirestore called with deckId=null. This implies loading unassigned cards, which requires a specific query or client-side filtering based on cards without a deckId if all cards are in one global collection per user, or a dedicated 'unassigned' collection.");
+        // If cards are always under a deck, and 'unassigned' is a virtual concept, this function might not be the right place to load them directly.
+        // Let's assume for now that if deckId is null, we are trying to get cards that don't have a deckId field,
+        // or this function is called specifically for a deck (not for 'all_user_cards' or 'unassigned_cards' which are handled in script.js by iterating).
+        // For simplicity, if deckId is truly null (meaning a specific "unassigned" collection, which is not the current structure), return empty.
+        // The current structure is users/{userId}/decks/{deckId}/cards
+        // So, a null deckId here means an error or a different design path.
+        // The main script.js handles 'all_user_cards' and 'unassigned_cards' by iterating or filtering.
+        // This function is primarily for loading cards from a *specific* deck's subcollection.
+        return []; 
+    } else {
+        console.log(`FirestoreService: Loading cards for deck ID: ${deckId} for user ID: ${userId}`);
+        cardsCollectionRef = collection(dbInstance, 'users', userId, 'decks', deckId, 'cards');
+    }
+
+    const qCards = query(cardsCollectionRef, orderBy('createdAt', 'asc'));
     try {
         const querySnapshot = await getDocs(qCards);
         return querySnapshot.docs.map(docSnap => {
             const data = docSnap.data();
-            return { 
-                id: docSnap.id, 
-                ...data, 
-                isUserCard: true, 
-                // Chuyển đổi Timestamp sang number (milliseconds) nếu có
+            return {
+                id: docSnap.id,
+                ...data,
+                isUserCard: true,
+                isFavorite: data.isFavorite || false, // Lấy trạng thái yêu thích, mặc định là false
                 lastReviewed: data.lastReviewed?.toDate ? data.lastReviewed.toDate().getTime() : (data.lastReviewed || null),
                 nextReviewDate: data.nextReviewDate?.toDate ? data.nextReviewDate.toDate().getTime() : null,
                 createdAt: data.createdAt?.toDate ? data.createdAt.toDate().getTime() : (data.createdAt || null),
@@ -99,26 +118,41 @@ export async function loadUserCardsFromFirestore(userId, deckId) {
 }
 
 export async function saveCardToFirestore(userId, deckId, cardData, cardId = null) {
-    if (!userId || !dbInstance || !deckId || !cardData) {
-        console.error("FirestoreService: Missing data for saveCardToFirestore");
+    if (!userId || !dbInstance || !cardData) {
+        console.error("FirestoreService: Missing userId, dbInstance, or cardData for saveCardToFirestore");
         return null;
     }
+    if (!deckId) {
+        console.error("FirestoreService: deckId is required to save a user card.");
+        // alert("Lỗi: Không thể lưu thẻ người dùng mà không có thông tin bộ thẻ."); // Consider if alert is needed here or handled by caller
+        return null;
+    }
+
+    let collectionRefPath = collection(dbInstance, 'users', userId, 'decks', deckId, 'cards');
+    
+    // Đảm bảo isFavorite có giá trị boolean
+    const dataToSave = { ...cardData };
+    if (typeof dataToSave.isFavorite === 'undefined') {
+        dataToSave.isFavorite = false; // Mặc định là false nếu không được cung cấp
+    }
+
+
     try {
         if (cardId) { // Update existing card
-            cardData.updatedAt = serverTimestamp();
-            const cardRef = doc(dbInstance, 'users', userId, 'decks', deckId, 'cards', cardId);
-            await updateDoc(cardRef, cardData);
-            console.log("FirestoreService: Card updated with ID:", cardId);
+            dataToSave.updatedAt = serverTimestamp();
+            const cardRef = doc(collectionRefPath, cardId); 
+            await updateDoc(cardRef, dataToSave); // Sử dụng dataToSave đã chuẩn hóa
+            console.log("FirestoreService: Card updated with ID:", cardId, "in deck:", deckId);
             return cardId;
         } else { // Add new card
-            cardData.createdAt = serverTimestamp();
-            const cardsCollectionRef = collection(dbInstance, 'users', userId, 'decks', deckId, 'cards');
-            const docRef = await addDoc(cardsCollectionRef, cardData);
-            console.log("FirestoreService: Card added with ID:", docRef.id);
+            dataToSave.createdAt = serverTimestamp();
+            dataToSave.updatedAt = serverTimestamp(); // Cũng nên có updatedAt khi tạo mới
+            const docRef = await addDoc(collectionRefPath, dataToSave); // Sử dụng dataToSave đã chuẩn hóa
+            console.log("FirestoreService: Card added with ID:", docRef.id, "to deck:", deckId);
             return docRef.id;
         }
     } catch (error) {
-        console.error("FirestoreService: Error saving card:", error);
+        console.error("FirestoreService: Error saving card:", error, "Data attempted:", dataToSave);
         alert("Đã xảy ra lỗi khi lưu thẻ. Vui lòng thử lại.");
         return null;
     }
@@ -126,13 +160,13 @@ export async function saveCardToFirestore(userId, deckId, cardData, cardId = nul
 
 export async function deleteCardFromFirestore(userId, deckId, cardId) {
     if (!userId || !dbInstance || !deckId || !cardId) {
-        console.error("FirestoreService: Missing data for deleteCardFromFirestore");
+        console.error("FirestoreService: Missing data for deleteCardFromFirestore (userId, dbInstance, deckId, or cardId)");
         return false;
     }
     try {
         const cardRef = doc(dbInstance, 'users', userId, 'decks', deckId, 'cards', cardId);
         await deleteDoc(cardRef);
-        console.log("FirestoreService: Card deleted:", cardId);
+        console.log("FirestoreService: Card deleted:", cardId, "from deck:", deckId);
         return true;
     } catch (error) {
         console.error("FirestoreService: Error deleting card:", error);
@@ -144,8 +178,7 @@ export async function deleteCardFromFirestore(userId, deckId, cardId) {
 // --- Web Card Status Operations ---
 export async function getWebCardStatusFromFirestore(userId, webCardGlobalId) {
     if (!userId || !dbInstance || !webCardGlobalId) {
-        // console.log("FirestoreService: Missing data for getWebCardStatusFromFirestore, returning default.");
-        return null; // Trả về null nếu không có userId hoặc webCardGlobalId
+        return null;
     }
     const statusRef = doc(dbInstance, 'users', userId, 'webCardStatuses', webCardGlobalId);
     try {
@@ -154,35 +187,59 @@ export async function getWebCardStatusFromFirestore(userId, webCardGlobalId) {
             const data = docSnap.data();
             return {
                 ...data,
+                isFavorite: data.isFavorite || false, // Lấy trạng thái yêu thích, mặc định là false
                 lastReviewed: data.lastReviewed?.toDate ? data.lastReviewed.toDate().getTime() : (data.lastReviewed || null),
                 nextReviewDate: data.nextReviewDate?.toDate ? data.nextReviewDate.toDate().getTime() : null,
             };
         }
-        return null; // Không tìm thấy trạng thái
+        return { isFavorite: false }; // Trả về trạng thái mặc định nếu document không tồn tại
     } catch (error) {
         console.error("FirestoreService: Error fetching web card status for", webCardGlobalId, error);
-        return null;
+        return { isFavorite: false }; // Trả về trạng thái mặc định khi có lỗi
     }
 }
 
 export async function updateWebCardStatusInFirestore(userId, webCardGlobalId, cardData, srsDataToUpdate) {
     if (!userId || !dbInstance || !webCardGlobalId || !cardData || !srsDataToUpdate) {
-        console.error("FirestoreService: Missing data for updateWebCardStatusInFirestore");
+        console.error("FirestoreService: Missing data for updateWebCardStatusInFirestore. Aborting.");
         return false;
     }
     const statusRef = doc(dbInstance, 'users', userId, 'webCardStatuses', webCardGlobalId);
+
+    let originalTerm;
+    if (cardData.category === 'phrasalVerbs') originalTerm = cardData.phrasalVerb;
+    else if (cardData.category === 'collocations') originalTerm = cardData.collocation;
+    else if (cardData.category === 'idioms') originalTerm = cardData.idiom;
+    else originalTerm = cardData.word;
+
+    if (originalTerm === undefined) {
+        console.error("[FirestoreService] CRITICAL: originalTerm is undefined. cardData received:", cardData);
+        return false;
+    }
+
     const dataToSet = {
         originalCategory: cardData.category,
-        originalWordOrPhrase: cardData.category === 'phrasalVerbs' ? cardData.phrasalVerb : (cardData.category === 'collocations' ? cardData.collocation : cardData.word),
-        ...srsDataToUpdate // status, lastReviewed, reviewCount, nextReviewDate, interval, easeFactor, repetitions
+        originalWordOrPhrase: originalTerm,
+        ...srsDataToUpdate // srsDataToUpdate có thể chứa isFavorite
     };
+    
+    // Đảm bảo isFavorite có giá trị boolean nếu được cung cấp
+    if (typeof dataToSet.isFavorite === 'undefined' && srsDataToUpdate.hasOwnProperty('isFavorite')) {
+        // Nếu isFavorite được truyền vào nhưng là undefined, đặt nó thành false
+        // Hoặc nếu bạn muốn giữ nguyên giá trị cũ nếu isFavorite không được truyền, logic sẽ khác
+    } else if (typeof dataToSet.isFavorite !== 'boolean' && dataToSet.hasOwnProperty('isFavorite')) {
+        dataToSet.isFavorite = !!dataToSet.isFavorite; // Chuyển thành boolean
+    }
+
+
+    console.log("[FirestoreService] updateWebCardStatusInFirestore - Data to set in Firestore:", JSON.parse(JSON.stringify(dataToSet)));
+
     try {
         await setDoc(statusRef, dataToSet, { merge: true });
-        console.log(`FirestoreService: Web card status SRS updated: ${webCardGlobalId}`, srsDataToUpdate);
+        console.log(`FirestoreService: Web card status updated for ${webCardGlobalId}:`, dataToSet);
         return true;
     } catch (error) {
-        console.error("FirestoreService: Error updating web card status SRS:", error);
-        alert("Lỗi cập nhật trạng thái thẻ web trên server. Vui lòng thử lại.");
+        console.error("FirestoreService: Error updating web card status in setDoc:", error, "Data attempted:", dataToSet);
         return false;
     }
 }
@@ -216,11 +273,53 @@ export async function saveAppStateToFirestoreService(userId, appStateData) {
     }
     const appStateRef = doc(dbInstance, 'users', userId, 'userSettings', 'appStateDoc');
     try {
-        await setDoc(appStateRef, appStateData); // Ghi đè toàn bộ
+        await setDoc(appStateRef, appStateData); // Không cần merge ở đây vì ta lưu toàn bộ appState
         console.log("FirestoreService: AppState saved to Firestore for user:", userId);
         return true;
     } catch (error) {
         console.error("FirestoreService: Error saving appState to Firestore:", error);
+        return false;
+    }
+}
+
+// --- Lecture Content Operations ---
+export async function getLectureContent(lectureId) {
+    if (!dbInstance || !lectureId) {
+        console.error("FirestoreService: Missing dbInstance or lectureId for getLectureContent");
+        return null;
+    }
+    const lectureRef = doc(dbInstance, 'lectures', lectureId);
+    try {
+        const docSnap = await getDoc(lectureRef);
+        if (docSnap.exists()) {
+            console.log("FirestoreService: Lecture content loaded for ID:", lectureId);
+            return docSnap.data();
+        }
+        console.log("FirestoreService: No lecture content found for ID:", lectureId);
+        return null;
+    } catch (error) {
+        console.error("FirestoreService: Error loading lecture content:", error);
+        return null;
+    }
+}
+
+export async function saveLectureContent(lectureId, title, contentHTML) {
+    if (!dbInstance || !lectureId || typeof title !== 'string' || typeof contentHTML !== 'string') {
+        console.error("FirestoreService: Missing data or invalid type for saveLectureContent");
+        return false;
+    }
+    const lectureRef = doc(dbInstance, 'lectures', lectureId);
+    const dataToSave = {
+        title: title,
+        contentHTML: contentHTML,
+        lastUpdatedAt: serverTimestamp()
+    };
+    try {
+        await setDoc(lectureRef, dataToSave, { merge: true });
+        console.log("FirestoreService: Lecture content saved for ID:", lectureId);
+        return true;
+    } catch (error) {
+        console.error("FirestoreService: Error saving lecture content:", error);
         return false;
     }
 }
