@@ -36,13 +36,13 @@ export async function createDeckInFirestore(userId, deckName) {
     const newDeckData = {
         name: deckName.trim(),
         createdAt: serverTimestamp(),
-        owner: userId // Lưu owner để có thể dùng cho rules sau này nếu cần
+        owner: userId 
     };
     try {
         const decksCollectionRef = collection(dbInstance, 'users', userId, 'decks');
         const docRef = await addDoc(decksCollectionRef, newDeckData);
         console.log("FirestoreService: Deck created with ID:", docRef.id);
-        return { id: docRef.id, ...newDeckData, createdAt: Date.now() }; // Trả về cả ID và dữ liệu (createdAt là client-side estimate)
+        return { id: docRef.id, ...newDeckData, createdAt: Date.now() }; 
     } catch (error) {
         console.error("FirestoreService: Error creating deck:", error);
         alert("Đã xảy ra lỗi khi tạo bộ thẻ. Vui lòng thử lại.");
@@ -69,15 +69,26 @@ export async function updateDeckNameInFirestore(userId, deckId, newName) {
 
 // --- Card Operations ---
 export async function loadUserCardsFromFirestore(userId, deckId) {
-    if (!userId || !dbInstance || (deckId !== null && !deckId)) { // Allow deckId to be null for unassigned cards
+    if (!userId || !dbInstance || (deckId !== null && !deckId)) { 
         console.error("FirestoreService: Missing data for loadUserCardsFromDeck (userId or dbInstance missing, or invalid deckId if not null)");
         return [];
     }
 
     let cardsCollectionRef;
     if (deckId === null) {
-        console.warn("FirestoreService: loadUserCardsFromFirestore called with deckId=null. This scenario needs specific DB structure for 'unassigned' cards. Returning empty for now as cards are expected under a specific deck's subcollection in the current design.");
-        return []; // Current design stores cards under users/{userId}/decks/{deckId}/cards
+        // This case is for unassigned cards. If you decide to store them directly under a user's 'cards' collection:
+        // cardsCollectionRef = collection(dbInstance, 'users', userId, 'cards');
+        // For now, assuming unassigned cards are filtered client-side or not directly loaded this way.
+        console.warn("FirestoreService: loadUserCardsFromFirestore called with deckId=null. This implies loading unassigned cards, which requires a specific query or client-side filtering based on cards without a deckId if all cards are in one global collection per user, or a dedicated 'unassigned' collection.");
+        // If cards are always under a deck, and 'unassigned' is a virtual concept, this function might not be the right place to load them directly.
+        // Let's assume for now that if deckId is null, we are trying to get cards that don't have a deckId field,
+        // or this function is called specifically for a deck (not for 'all_user_cards' or 'unassigned_cards' which are handled in script.js by iterating).
+        // For simplicity, if deckId is truly null (meaning a specific "unassigned" collection, which is not the current structure), return empty.
+        // The current structure is users/{userId}/decks/{deckId}/cards
+        // So, a null deckId here means an error or a different design path.
+        // The main script.js handles 'all_user_cards' and 'unassigned_cards' by iterating or filtering.
+        // This function is primarily for loading cards from a *specific* deck's subcollection.
+        return []; 
     } else {
         console.log(`FirestoreService: Loading cards for deck ID: ${deckId} for user ID: ${userId}`);
         cardsCollectionRef = collection(dbInstance, 'users', userId, 'decks', deckId, 'cards');
@@ -92,6 +103,7 @@ export async function loadUserCardsFromFirestore(userId, deckId) {
                 id: docSnap.id,
                 ...data,
                 isUserCard: true,
+                isFavorite: data.isFavorite || false, // Lấy trạng thái yêu thích, mặc định là false
                 lastReviewed: data.lastReviewed?.toDate ? data.lastReviewed.toDate().getTime() : (data.lastReviewed || null),
                 nextReviewDate: data.nextReviewDate?.toDate ? data.nextReviewDate.toDate().getTime() : null,
                 createdAt: data.createdAt?.toDate ? data.createdAt.toDate().getTime() : (data.createdAt || null),
@@ -110,31 +122,37 @@ export async function saveCardToFirestore(userId, deckId, cardData, cardId = nul
         console.error("FirestoreService: Missing userId, dbInstance, or cardData for saveCardToFirestore");
         return null;
     }
-    // deckId is crucial for saving cards as they are stored under a specific deck's subcollection.
-    // If "unassigned" cards are needed, they should probably have a special deckId or a different collection path.
     if (!deckId) {
-        console.error("FirestoreService: deckId is required to save a card.");
-        alert("Lỗi: Không thể lưu thẻ mà không có thông tin bộ thẻ.");
+        console.error("FirestoreService: deckId is required to save a user card.");
+        // alert("Lỗi: Không thể lưu thẻ người dùng mà không có thông tin bộ thẻ."); // Consider if alert is needed here or handled by caller
         return null;
     }
 
     let collectionRefPath = collection(dbInstance, 'users', userId, 'decks', deckId, 'cards');
+    
+    // Đảm bảo isFavorite có giá trị boolean
+    const dataToSave = { ...cardData };
+    if (typeof dataToSave.isFavorite === 'undefined') {
+        dataToSave.isFavorite = false; // Mặc định là false nếu không được cung cấp
+    }
+
 
     try {
         if (cardId) { // Update existing card
-            cardData.updatedAt = serverTimestamp();
-            const cardRef = doc(collectionRefPath, cardId); // doc needs collection ref and doc id
-            await updateDoc(cardRef, cardData);
+            dataToSave.updatedAt = serverTimestamp();
+            const cardRef = doc(collectionRefPath, cardId); 
+            await updateDoc(cardRef, dataToSave); // Sử dụng dataToSave đã chuẩn hóa
             console.log("FirestoreService: Card updated with ID:", cardId, "in deck:", deckId);
             return cardId;
         } else { // Add new card
-            cardData.createdAt = serverTimestamp();
-            const docRef = await addDoc(collectionRefPath, cardData);
+            dataToSave.createdAt = serverTimestamp();
+            dataToSave.updatedAt = serverTimestamp(); // Cũng nên có updatedAt khi tạo mới
+            const docRef = await addDoc(collectionRefPath, dataToSave); // Sử dụng dataToSave đã chuẩn hóa
             console.log("FirestoreService: Card added with ID:", docRef.id, "to deck:", deckId);
             return docRef.id;
         }
     } catch (error) {
-        console.error("FirestoreService: Error saving card:", error);
+        console.error("FirestoreService: Error saving card:", error, "Data attempted:", dataToSave);
         alert("Đã xảy ra lỗi khi lưu thẻ. Vui lòng thử lại.");
         return null;
     }
@@ -169,14 +187,15 @@ export async function getWebCardStatusFromFirestore(userId, webCardGlobalId) {
             const data = docSnap.data();
             return {
                 ...data,
+                isFavorite: data.isFavorite || false, // Lấy trạng thái yêu thích, mặc định là false
                 lastReviewed: data.lastReviewed?.toDate ? data.lastReviewed.toDate().getTime() : (data.lastReviewed || null),
                 nextReviewDate: data.nextReviewDate?.toDate ? data.nextReviewDate.toDate().getTime() : null,
             };
         }
-        return null;
+        return { isFavorite: false }; // Trả về trạng thái mặc định nếu document không tồn tại
     } catch (error) {
         console.error("FirestoreService: Error fetching web card status for", webCardGlobalId, error);
-        return null;
+        return { isFavorite: false }; // Trả về trạng thái mặc định khi có lỗi
     }
 }
 
@@ -187,41 +206,40 @@ export async function updateWebCardStatusInFirestore(userId, webCardGlobalId, ca
     }
     const statusRef = doc(dbInstance, 'users', userId, 'webCardStatuses', webCardGlobalId);
 
-    console.log("[FirestoreService] updateWebCardStatusInFirestore - Incoming cardData:", JSON.parse(JSON.stringify(cardData))); // Log chi tiết cardData
-
     let originalTerm;
-    if (cardData.category === 'phrasalVerbs') {
-        originalTerm = cardData.phrasalVerb;
-    } else if (cardData.category === 'collocations') {
-        originalTerm = cardData.collocation;
-    } else if (cardData.category === 'idioms') {
-        originalTerm = cardData.idiom;
-    } else {
-        originalTerm = cardData.word;
-    }
-
-    console.log("[FirestoreService] updateWebCardStatusInFirestore - Determined originalTerm:", originalTerm, "- Type:", typeof originalTerm); // Log giá trị originalTerm
+    if (cardData.category === 'phrasalVerbs') originalTerm = cardData.phrasalVerb;
+    else if (cardData.category === 'collocations') originalTerm = cardData.collocation;
+    else if (cardData.category === 'idioms') originalTerm = cardData.idiom;
+    else originalTerm = cardData.word;
 
     if (originalTerm === undefined) {
-        console.error("[FirestoreService] CRITICAL: originalTerm is undefined. This will cause Firestore error. cardData received:", cardData);
-        // alert("Lỗi nghiêm trọng: Không thể xác định thuật ngữ gốc của thẻ web. Dữ liệu sẽ không được lưu."); // Bỏ alert để tránh làm gián đoạn test
+        console.error("[FirestoreService] CRITICAL: originalTerm is undefined. cardData received:", cardData);
         return false;
     }
 
     const dataToSet = {
         originalCategory: cardData.category,
-        originalWordOrPhrase: originalTerm, // Sử dụng biến originalTerm đã được gán đúng
-        ...srsDataToUpdate
+        originalWordOrPhrase: originalTerm,
+        ...srsDataToUpdate // srsDataToUpdate có thể chứa isFavorite
     };
+    
+    // Đảm bảo isFavorite có giá trị boolean nếu được cung cấp
+    if (typeof dataToSet.isFavorite === 'undefined' && srsDataToUpdate.hasOwnProperty('isFavorite')) {
+        // Nếu isFavorite được truyền vào nhưng là undefined, đặt nó thành false
+        // Hoặc nếu bạn muốn giữ nguyên giá trị cũ nếu isFavorite không được truyền, logic sẽ khác
+    } else if (typeof dataToSet.isFavorite !== 'boolean' && dataToSet.hasOwnProperty('isFavorite')) {
+        dataToSet.isFavorite = !!dataToSet.isFavorite; // Chuyển thành boolean
+    }
+
 
     console.log("[FirestoreService] updateWebCardStatusInFirestore - Data to set in Firestore:", JSON.parse(JSON.stringify(dataToSet)));
 
     try {
         await setDoc(statusRef, dataToSet, { merge: true });
-        console.log(`FirestoreService: Web card status SRS updated for ${webCardGlobalId}:`, srsDataToUpdate);
+        console.log(`FirestoreService: Web card status updated for ${webCardGlobalId}:`, dataToSet);
         return true;
     } catch (error) {
-        console.error("FirestoreService: Error updating web card status SRS in setDoc:", error, "Data attempted:", dataToSet);
+        console.error("FirestoreService: Error updating web card status in setDoc:", error, "Data attempted:", dataToSet);
         return false;
     }
 }
@@ -255,7 +273,7 @@ export async function saveAppStateToFirestoreService(userId, appStateData) {
     }
     const appStateRef = doc(dbInstance, 'users', userId, 'userSettings', 'appStateDoc');
     try {
-        await setDoc(appStateRef, appStateData);
+        await setDoc(appStateRef, appStateData); // Không cần merge ở đây vì ta lưu toàn bộ appState
         console.log("FirestoreService: AppState saved to Firestore for user:", userId);
         return true;
     } catch (error) {
