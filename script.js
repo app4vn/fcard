@@ -873,7 +873,7 @@ async function toggleFavoriteStatus(cardItem, favoriteButtonElement) {
         
         // Nếu đang lọc theo yêu thích, làm mới danh sách để phản ánh thay đổi
         if (filterCardStatusSelect && filterCardStatusSelect.value === 'favorites') {
-            applyAllFilters(false); // Gọi applyAllFilters để lọc lại dựa trên activeMasterList đã cập nhật
+            applyAllFilters(false); 
         }
     } else {
         showToast("Lỗi cập nhật trạng thái yêu thích. Vui lòng thử lại.", 3000, 'error');
@@ -1786,6 +1786,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (specificPhraseToSearch) { 
             cST = specificPhraseToSearch.toLowerCase();
+            searchInput.value = specificPhraseToSearch; // Cập nhật ô tìm kiếm để người dùng thấy
         }
 
         if (!fromLoad) { 
@@ -1832,9 +1833,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (cST) {
             lTP = lTP.filter(i => {
                 const wOP = getCardTerm(i); 
-                if (wOP.toLowerCase().includes(cST)) return true;
-                if (specificPhraseToSearch && wOP.toLowerCase() === cST) return true; 
-                if (!specificPhraseToSearch) { 
+                if (specificPhraseToSearch) { // Nếu đang tìm cụm từ cụ thể, chỉ khớp chính xác
+                    return wOP.toLowerCase() === cST;
+                } else { // Ngược lại, tìm kiếm bao gồm
+                    if (wOP.toLowerCase().includes(cST)) return true;
                     if (i.meanings && i.meanings.some(m => m.text.toLowerCase().includes(cST))) return true;
                     if (i.meanings) {
                         for (const meaning of i.meanings) {
@@ -1846,6 +1848,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
+        // Chỉ áp dụng bộ lọc trạng thái nếu không phải là tìm kiếm cụm từ cụ thể từ BottomSheet
+        // (vì lúc đó ta muốn hiển thị chính xác thẻ đó bất kể trạng thái)
         if (!specificPhraseToSearch) { 
             const selectedFilterValue = sFCSC.filterMarked; 
             console.log("Applying card status filter: ", selectedFilterValue);
