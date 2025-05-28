@@ -646,7 +646,7 @@ function generateCardLectureId(cardItem) {
             keyPart = cardItem.idiom;
             break;
         default:
-            keyPart = item.word;
+            keyPart = cardItem.word;
     }
     if (!keyPart) return `${category}-unknown-${generateUniqueId('lecturekey')}`;
 
@@ -824,6 +824,7 @@ async function toggleFavoriteStatus(cardItem, favoriteButtonElement) {
         isFavorite: newFavoriteState, 
         updatedAt: serverTimestamp() 
     };
+    const cardIdentifier = cardItem.isUserCard ? cardItem.id : getCardIdentifier(cardItem);
 
     if (cardItem.isUserCard) {
         if (!cardItem.id || !cardItem.deckId) {
@@ -847,13 +848,23 @@ async function toggleFavoriteStatus(cardItem, favoriteButtonElement) {
         cardItem.isFavorite = newFavoriteState; 
         cardItem.updatedAt = Date.now(); 
 
+        const cardInActiveMasterList = activeMasterList.find(c => 
+            (c.isUserCard ? c.id : getCardIdentifier(c)) === cardIdentifier
+        );
+        if (cardInActiveMasterList) {
+            cardInActiveMasterList.isFavorite = newFavoriteState;
+            cardInActiveMasterList.updatedAt = Date.now(); 
+        } else {
+            console.warn("Card not found in activeMasterList for favorite update:", cardIdentifier);
+        }
+
         if (favoriteButtonElement) {
             updateFavoriteButtonUI(favoriteButtonElement, newFavoriteState);
         }
         showToast(newFavoriteState ? "Đã thêm vào Yêu thích!" : "Đã xóa khỏi Yêu thích.", 2000, 'success');
         
         if (filterCardStatusSelect && filterCardStatusSelect.value === 'favorites') {
-            applyAllFilters();
+            applyAllFilters(); 
         }
     } else {
         showToast("Lỗi cập nhật trạng thái yêu thích. Vui lòng thử lại.", 3000, 'error');
@@ -1766,13 +1777,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (specificPhraseToSearch) { 
             cST = specificPhraseToSearch.toLowerCase();
-            // Khi chọn cụm từ cụ thể, không reset các bộ lọc khác, để người dùng có thể lọc tiếp trên kết quả đó
         }
 
         if (!fromLoad) { 
             if (cCV === 'phrasalVerbs' || cCV === 'collocations' || cCV === 'idioms') {
                 if (cCV === 'phrasalVerbs' || cCV === 'collocations') {
-                    // Chỉ cập nhật baseVerb trong appState nếu không phải là đang tìm cụm từ cụ thể
                     if (!specificPhraseToSearch) sFCSC.baseVerb = baseVerbSelect.value;
                 } else {
                     sFCSC.baseVerb = 'all';
@@ -1828,7 +1837,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
-        if (!specificPhraseToSearch) { // Chỉ áp dụng bộ lọc trạng thái nếu không tìm cụm từ cụ thể
+        if (!specificPhraseToSearch) { 
             const selectedFilterValue = sFCSC.filterMarked; 
             console.log("Applying card status filter: ", selectedFilterValue);
 
@@ -2947,11 +2956,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     bottomSheetTitle.textContent = `Chọn cụm từ cho: ${subViewData.baseVerb}`;
                     subViewData.phrases.forEach(phrase => {
                         const phraseButton = document.createElement('button');
-                        phraseButton.className = 'status-filter-button'; // Tái sử dụng style này cho gọn
+                        phraseButton.className = 'status-filter-button'; 
                         phraseButton.innerHTML = `<span class="flex-grow">${phrase}</span>`;
                         phraseButton.onclick = () => {
-                            searchInput.value = phrase; // Đặt cụm từ vào thanh tìm kiếm
-                            applyAllFilters(false, phrase); // Gọi applyAllFilters với cụm từ cụ thể
+                            applyAllFilters(false, phrase); 
                             closeBottomSheet();
                         };
                         bottomSheetContent.appendChild(phraseButton);
@@ -3094,6 +3102,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
+    async function handleBaseVerbFilterChange() {
+        const selectedBaseVerb = baseVerbSelect.value;
+        const currentCategory = categorySelect.value;
+        const stateForCurrentCategory = getCategoryState(currentDatasetSource, currentCategory);
+        
+        stateForCurrentCategory.baseVerb = selectedBaseVerb; // Luôn lưu lựa chọn base verb
+        searchInput.value = ''; // Xóa tìm kiếm cũ khi chọn base verb mới
+        saveAppState(); // Lưu trạng thái base verb
+
+        if (selectedBaseVerb === 'all' || (currentCategory !== 'phrasalVerbs' && currentCategory !== 'collocations')) {
+            applyAllFilters(false); 
+        } else {
+            // Lọc activeMasterList để tìm các thẻ khớp category và baseVerb
+            // activeMasterList đã được lọc theo category trong loadVocabularyData
+            const cardsWithBaseVerb = activeMasterList.filter(card => card.baseVerb === selectedBaseVerb);
+            
+            const uniquePhrases = [...new Set(cardsWithBaseVerb.map(card => getCardTerm(card)))].sort();
+
+            if (uniquePhrases.length > 1) {
+                openBottomSheet(null, 'select_specific_phrase', { 
+                    phrases: uniquePhrases, 
+                    baseVerb: selectedBaseVerb, 
+                    category: currentCategory 
+                });
+            } else if (uniquePhrases.length === 1) {
+                applyAllFilters(false, uniquePhrases[0]);
+            } else { 
+                applyAllFilters(false); 
+            }
+        }
+    }
+
 
     function setupEventListeners() {
         if(hamburgerMenuBtn) hamburgerMenuBtn.addEventListener('click', openSidebar);
@@ -3304,36 +3344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.updateMainHeaderTitle();
         });
         
-        if(baseVerbSelect) baseVerbSelect.addEventListener('change', async () => {
-            const selectedBaseVerb = baseVerbSelect.value;
-            const currentCategory = categorySelect.value;
-            const stateForCurrentCategory = getCategoryState(currentDatasetSource, currentCategory);
-            stateForCurrentCategory.baseVerb = selectedBaseVerb; // Lưu lựa chọn base verb
-            searchInput.value = ''; // Xóa tìm kiếm cũ khi chọn base verb mới
-
-            if (selectedBaseVerb === 'all' || (currentCategory !== 'phrasalVerbs' && currentCategory !== 'collocations')) {
-                applyAllFilters(false); 
-            } else {
-                const cardsWithBaseVerb = activeMasterList.filter(card => 
-                    card.category === currentCategory && card.baseVerb === selectedBaseVerb
-                );
-                const uniquePhrases = [...new Set(cardsWithBaseVerb.map(card => getCardTerm(card)))];
-
-                if (uniquePhrases.length > 1) {
-                    openBottomSheet(null, 'select_specific_phrase', { 
-                        phrases: uniquePhrases, 
-                        baseVerb: selectedBaseVerb, 
-                        category: currentCategory 
-                    });
-                } else if (uniquePhrases.length === 1) {
-                    // Nếu chỉ có 1 cụm từ, tự động tìm kiếm cụm từ đó
-                    applyAllFilters(false, uniquePhrases[0]);
-                }
-                 else { // Không có cụm từ nào
-                    applyAllFilters(false); // Sẽ hiển thị "không có thẻ"
-                }
-            }
-        });
+        if(baseVerbSelect) baseVerbSelect.addEventListener('change', handleBaseVerbFilterChange); // Cập nhật ở đây
 
         if(tagSelect) tagSelect.addEventListener('change', ()=>applyAllFilters(false));
         if(searchInput) searchInput.addEventListener('input', ()=>applyAllFilters(false));
