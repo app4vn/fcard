@@ -71,33 +71,52 @@
                     <option value="nouns">Danh từ</option>
                     <option value="phrasalVerbs">Cụm động từ</option>
                     <option value="collocations">Collocations</option>
+                    <option value="idioms">Thành ngữ (Idioms)</option> 
                 </select>
             </div>
             <div id="base-verb-filter-container" style="display:none;"><label for="base-verb-filter" class="block text-sm font-medium text-slate-600 mb-1">Lọc theo từ gốc:</label><select id="base-verb-filter" class="w-full p-2 border border-slate-300 rounded-md shadow-sm"></select></div>
             <div id="tag-filter-container" style="display:none;"><label for="tags" class="block text-sm font-medium text-slate-600 mb-1">Lọc theo chủ đề:</label><select id="tags" class="w-full p-2 border border-slate-300 rounded-md shadow-sm"></select></div>
             <div><label for="practice-type-select" class="block text-sm font-medium text-slate-600 mb-1">Chế độ Luyện tập:</label><select id="practice-type-select" class="w-full p-2 border border-slate-300 rounded-md shadow-sm"><option value="off">Tắt</option><option value="meaning_quiz">Chọn Nghĩa</option><option value="word_quiz">Chọn Từ</option><option value="typing_practice">Gõ Từ</option></select></div>
-            <div>
-                <label for="filter-card-status" class="block text-sm font-medium text-slate-600 mb-1">Hiển thị thẻ:</label>
+            
+            <div style="display: none;"> 
+                <label for="filter-card-status" class="block text-sm font-medium text-slate-600 mb-1">Hiển thị thẻ (ẩn):</label>
                 <select id="filter-card-status" class="w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="all_study">Mới & Đang học</option>
-                    <option value="review_today">Cần ôn tập hôm nay</option>
-                    <option value="all_visible">Tất cả</option>
-                    <option value="new">Chỉ Mới</option>
-                    <option value="learning">Chỉ Đang học</option>
-                    <option value="learned">Chỉ Đã thuộc</option>
+                    <option value="all_active" title="Hiển thị tất cả thẻ Mới, Đang học và Đã thuộc (không bao gồm thẻ tạm ngưng)">Tất cả thẻ hoạt động</option>
+                    <option value="review_today" title="Các thẻ cần ôn tập trong ngày hôm nay">Cần ôn tập hôm nay</option>
+                    <option value="favorites" title="Chỉ hiển thị các thẻ bạn đã đánh dấu yêu thích (không bao gồm thẻ tạm ngưng)">Thẻ yêu thích</option>
+                    <option disabled>--- Trạng thái học (SRS) ---</option>
+                    <option value="new" title="Các thẻ bạn chưa ôn tập lần nào">Thẻ mới (chưa ôn)</option>
+                    <option value="learning" title="Các thẻ bạn đang trong quá trình học và cần lặp lại">Thẻ đang ôn luyện</option>
+                    <option value="learned" title="Các thẻ bạn đã nắm vững và ít cần ôn lại hơn">Thẻ đã nắm vững</option>
+                    <option disabled>--- Khác ---</option>
+                    <option value="all_visible" title="Hiển thị tất cả các thẻ, bao gồm cả những thẻ đang bị tạm ngưng ôn tập">Tất cả (gồm cả tạm ngưng)</option>
                 </select>
             </div>
         </section>
+
+        <section class="mt-8 pt-6 border-t border-slate-200">
+            <h3 class="text-lg font-semibold text-slate-700 mb-3">
+                <i class="fas fa-history mr-2 text-slate-500"></i>Đã xem gần đây
+            </h3>
+            <ul id="recently-viewed-list" class="space-y-2 max-h-48 overflow-y-auto text-sm">
+            </ul>
+            <p id="no-recent-cards-message" class="text-slate-500 italic text-xs mt-2" style="display: none;">Chưa có thẻ nào được xem gần đây.</p>
+        </section>
+
     </aside>
     <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[1000] hidden"></div>
 
     <main class="container mx-auto p-4 sm:p-6 flex-grow w-full max-w-2xl flex flex-col items-center">
         <section class="search-filter-main-container w-full mb-4">
-            <div class="control-group bg-white p-3 rounded-lg shadow">
-                <div class="relative">
+            <div class="control-group bg-white p-3 rounded-lg shadow flex flex-row space-x-3 items-center">
+                <div class="relative flex-grow">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-search text-slate-400"></i></div>
-                    <input type="search" id="search-input" placeholder="Nhập từ tiếng Anh..." class="w-full p-3 pl-10 pr-8 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                    <input type="search" id="search-input" placeholder="Nhập từ..." class="w-full p-3 pl-10 pr-4 border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base">
                 </div>
+                <button id="open-status-filter-btn" title="Lọc thẻ theo trạng thái" class="flex-shrink-0 p-3 text-slate-600 hover:bg-slate-200 rounded-md border border-slate-300 transition-colors duration-150">
+                    <i class="fas fa-filter"></i>
+                    <span class="hidden sm:inline ml-2">Lọc</span> 
+                </button>
             </div>
         </section>
         <section id="practice-area" class="w-full mb-4" style="display:none;">
@@ -155,11 +174,11 @@
         <section class="additional-card-actions grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-md mb-4">
             <button id="action-btn-notes" class="additional-action-btn bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-slate-200">
                 <i class="fas fa-sticky-note mr-1 sm:mr-2"></i>
-                <span class="text-xs sm:text-sm">Ghi chú</span>
+                <span class="text-xs sm:text-sm">Bài Giảng</span>
             </button>
             <button id="action-btn-media" class="additional-action-btn bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-slate-200">
                 <i class="fas fa-headphones-alt mr-1 sm:mr-2"></i>
-                <span class="text-xs sm:text-sm">Nghe/Xem</span>
+                <span class="text-xs sm:text-sm">Xem Video</span>
             </button>
             <button id="action-btn-practice-card" class="additional-action-btn bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-slate-200">
                 <i class="fas fa-dumbbell mr-1 sm:mr-2"></i>
@@ -234,8 +253,7 @@
                         <textarea id="card-general-notes-input" rows="2" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                     </div>
                 </div>
-                <div id="phrasal-verb-specific-fields" style="display: none;" class="border-t pt-4 mt-4">
-                    <div class="relative">
+                <div id="phrasal-verb-specific-fields" style="display: none;" class="border-t pt-4 mt-4"> <div class="relative">
                         <label for="card-base-verb-input" class="block text-sm font-medium text-slate-600">Động từ gốc:</label>
                         <input type="text" id="card-base-verb-input" class="mt-1 block w-full p-2 pr-8 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         </div>
@@ -251,13 +269,13 @@
                     <label for="card-json-input" class="block text-sm font-medium text-slate-600">Dán mã JSON (một thẻ hoặc một mảng thẻ):</label>
                     <textarea id="card-json-input" rows="10" class="mt-1 block w-full p-2 border border-slate-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder='Ví dụ cho một thẻ:
 {
-  "category": "collocations",
-  "collocation": "make progress",
-  "baseVerb": "make",
+  "category": "idioms",
+  "idiom": "kick the bucket",
+  "pronunciation": "/kɪk ðə ˈbʌkɪt/",
   "meanings": [
-    { "text": "Tiến bộ", "examples": [{ "eng": "He is making good progress." }] }
+    { "text": "Chết", "examples": [{ "eng": "The old man finally kicked the bucket." }] }
   ],
-  "tags": ["development"]
+  "tags": ["death", "informal"]
 }
 Hoặc một mảng thẻ:
 [ {thẻ 1}, {thẻ 2} ]'></textarea>
@@ -400,7 +418,6 @@ Hoặc một mảng thẻ:
     <div id="srs-feedback-toast" class="fixed bottom-5 right-5 bg-slate-700 text-white text-sm py-3 px-5 rounded-lg shadow-md opacity-0 transition-opacity duration-500 ease-in-out z-[1010]">
         </div>
 
-    <script src="https://youglish.com/public/emb/widget.js" async></script>
     <script type="module" src="auth.js"></script>
     <script type="module" src="firestoreService.js"></script>
     <script type="module" src="srs.js"></script>
