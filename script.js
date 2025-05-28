@@ -845,6 +845,7 @@ async function toggleFavoriteStatus(cardItem, favoriteButtonElement) {
     }
 
     if (success) {
+        // Cập nhật trạng thái isFavorite trong cả window.currentData và activeMasterList
         cardItem.isFavorite = newFavoriteState; 
         cardItem.updatedAt = Date.now(); 
 
@@ -857,14 +858,22 @@ async function toggleFavoriteStatus(cardItem, favoriteButtonElement) {
         } else {
             console.warn("Card not found in activeMasterList for favorite update:", cardIdentifier);
         }
+        // Cập nhật cả thẻ trong window.currentData (nếu nó khác với cardItem - trường hợp hiếm)
+        const cardInCurrentData = window.currentData.find(c => (c.isUserCard ? c.id : getCardIdentifier(c)) === cardIdentifier);
+        if (cardInCurrentData) {
+            cardInCurrentData.isFavorite = newFavoriteState;
+            cardInCurrentData.updatedAt = Date.now();
+        }
+
 
         if (favoriteButtonElement) {
             updateFavoriteButtonUI(favoriteButtonElement, newFavoriteState);
         }
         showToast(newFavoriteState ? "Đã thêm vào Yêu thích!" : "Đã xóa khỏi Yêu thích.", 2000, 'success');
         
+        // Nếu đang lọc theo yêu thích, làm mới danh sách để phản ánh thay đổi
         if (filterCardStatusSelect && filterCardStatusSelect.value === 'favorites') {
-            applyAllFilters(); 
+            applyAllFilters(false); // Gọi applyAllFilters để lọc lại dựa trên activeMasterList đã cập nhật
         }
     } else {
         showToast("Lỗi cập nhật trạng thái yêu thích. Vui lòng thử lại.", 3000, 'error');
@@ -3107,15 +3116,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const currentCategory = categorySelect.value;
         const stateForCurrentCategory = getCategoryState(currentDatasetSource, currentCategory);
         
-        stateForCurrentCategory.baseVerb = selectedBaseVerb; // Luôn lưu lựa chọn base verb
-        searchInput.value = ''; // Xóa tìm kiếm cũ khi chọn base verb mới
-        saveAppState(); // Lưu trạng thái base verb
+        stateForCurrentCategory.baseVerb = selectedBaseVerb; 
+        searchInput.value = ''; 
+        saveAppState(); 
 
         if (selectedBaseVerb === 'all' || (currentCategory !== 'phrasalVerbs' && currentCategory !== 'collocations')) {
             applyAllFilters(false); 
         } else {
-            // Lọc activeMasterList để tìm các thẻ khớp category và baseVerb
-            // activeMasterList đã được lọc theo category trong loadVocabularyData
             const cardsWithBaseVerb = activeMasterList.filter(card => card.baseVerb === selectedBaseVerb);
             
             const uniquePhrases = [...new Set(cardsWithBaseVerb.map(card => getCardTerm(card)))].sort();
@@ -3344,7 +3351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.updateMainHeaderTitle();
         });
         
-        if(baseVerbSelect) baseVerbSelect.addEventListener('change', handleBaseVerbFilterChange); // Cập nhật ở đây
+        if(baseVerbSelect) baseVerbSelect.addEventListener('change', handleBaseVerbFilterChange); 
 
         if(tagSelect) tagSelect.addEventListener('change', ()=>applyAllFilters(false));
         if(searchInput) searchInput.addEventListener('input', ()=>applyAllFilters(false));
